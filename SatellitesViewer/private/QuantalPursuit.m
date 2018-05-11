@@ -63,7 +63,7 @@ elseif obj.BeginWith('posIndex,')
     % Plot lickport movement
     tOn = ss{2} / 1000 - t0;
     lickportPos = ss{3};
-    plot(ax1, tOn, lickportPos, 'o', 'Color', [0 .7 0], 'LineWidth', 2, 'MarkerSize', 6);
+    plot(ax1, tOn, lickportPos, '>', 'Color', [0 .7 0], 'MarkerSize', 6);
     
     if tOn > ax1.XLim(2)
         ax1.XLim(2) = tOn + 5;
@@ -95,6 +95,15 @@ elseif obj.BeginWith('water,')
     
     if tOn+dur > ax1.XLim(2)
         ax1.XLim(2) = tOn + dur + 5;
+    end
+    
+elseif obj.BeginWith('opto,')
+    % Plot lick
+    tOpto = ss{2} / 1000 - t0;
+    plot(ax1, tOpto, lickportPos, 'cs', 'MarkerFaceColor', 'c', 'MarkerSize', 10);
+    
+    if tOpto > ax1.XLim(2)
+        ax1.XLim(2) = tOpto + 5;
     end
 end
 

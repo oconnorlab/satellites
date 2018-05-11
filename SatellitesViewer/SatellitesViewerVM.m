@@ -233,19 +233,40 @@ classdef SatellitesViewerVM < handle
                 
                 [~, sheets] = xlsfinfo(filePath);
                 
-                sheetIdx = listdlg('PromptString', 'Select a sheet:', ...
+                sheetInd = listdlg('PromptString', 'Select a sheet:', ...
                     'SelectionMode', 'multi', ...
                     'ListString', sheets);
                 
-                if ~isempty(sheetIdx)
-                    for i = length(sheetIdx) : -1 : 1
-                        [~, ~, xlsArray] = xlsread(filePath, sheetIdx(i), '', 'basic');
-                        cmdGroupName = [bareName, ' [', sheets{sheetIdx(i)}, ']'];
-                        this.CreatCmdGroupUI(cmdGroupName, xlsArray);
+                if isempty(sheetInd)
+                    return;
+                end
+                
+                % Create new UI controls
+                winObj = uifigure('Name', bareName, 'Resize', 'off');
+                winObj.Position = [winObj.Position(1:2) 100 100];
+                tabgp = uitabgroup(winObj);
+                
+                for i = 1 : length(sheetInd)
+                    [~, ~, xlsArray] = xlsread(filePath, sheetInd(i), '', 'basic');
+                    tab = uitab(tabgp, 'Title', sheets{sheetInd(i)});
+                    
+                    try
+                        this.CreatCmdGroupUI(winObj, tab, xlsArray);
+                    catch e
+                        delete(tab);
+                        uialert(this.svWin.UIFigure, ...
+                            'Cannot create this command group. Please check the format of the content.', ...
+                            tab.Title, ...
+                            'Icon', 'warning', ...
+                            'Modal', true);
                     end
                 end
                 
-            catch
+                tabgp.Position = [0 0 winObj.Position(3:4)];
+                
+                this.cmdGroupWins(end+1) = winObj;
+                
+            catch e
                 uialert(this.svWin.UIFigure, 'Error occured when reading this file.', ...
                     'Loading command group', ...
                     'Icon', 'warning', ...
@@ -467,7 +488,7 @@ classdef SatellitesViewerVM < handle
             [success, errMsg] = this.currentChannel.SendMessage(outStr);
             
             if ~success
-                % Update UI to reflect disabling state
+                % Update UI to reflect disabled state
                 this.UpdateChannelUI();
                 
                 % Report error
@@ -580,7 +601,7 @@ classdef SatellitesViewerVM < handle
             this.Send(this.svWin.quickCmdEdits{cmdIdx}.Value);
         end
         
-        function SendCmdGroup(this, winObj, groupIdx)
+        function SendGroupCmd(this, winObj, cmdIdx)
             % Output formated command group
             %
             %   SendSerialCmdGroup(groupIdx)
@@ -588,17 +609,17 @@ classdef SatellitesViewerVM < handle
             % Inputs:
             %   groupIdx        The index of a command group. If it is zero, all command groups will be sent.
             
-            if groupIdx ~= 0
-                outStr = winObj.UserData.cmdGroups(groupIdx).button.Text;
-                for j = 1 : length(winObj.UserData.cmdGroups(groupIdx).edits)
-                    if ~isempty(winObj.UserData.cmdGroups(groupIdx).edits{j})
-                        outStr = [outStr ',' winObj.UserData.cmdGroups(groupIdx).edits{j}.Value];
+            if cmdIdx ~= 0
+                outStr = winObj.UserData.cmds(cmdIdx).button.Text;
+                for j = 1 : length(winObj.UserData.cmds(cmdIdx).edits)
+                    if ~isempty(winObj.UserData.cmds(cmdIdx).edits{j})
+                        outStr = [outStr ',' winObj.UserData.cmds(cmdIdx).edits{j}.Value];
                     end
                 end
                 this.Send(outStr);
             else
-                for i = 1 : length(winObj.UserData.cmdGroups)
-                    this.SendCmdGroup(winObj, i);
+                for i = 1 : length(winObj.UserData.cmds)
+                    this.SendGroupCmd(winObj, i);
                     pause(0.1);
                 end
             end
@@ -628,92 +649,78 @@ classdef SatellitesViewerVM < handle
             this.svWin.SaveSettingsButton.Enable = 'off';
         end
         
-        function CreatCmdGroupUI(this, cmdGroupName, xlsArray)
+        function CreatCmdGroupUI(this, winObj, tab, xlsArray)
             % Create command group UI from one spreadsheet
             
-            try
-                % Get content
-                xlsArray = xlsArray(2:end, 1:3);
+            % Get content
+            xlsArray = xlsArray(2:end, 1:3);
+            
+            isNotNaN = cellfun(@(x) ~isnan(x(1)), xlsArray);
+            isCmdStr = isNotNaN(:,1);
+            isVal = isNotNaN(:,2);
+            isLabel = isNotNaN(:,3);
+            
+            cmdNames = xlsArray(isCmdStr,1);
+            cmdInd = cumsum(isCmdStr);
+            
+            % UI position parameters
+            xPos = 18;
+            yPos = 15;
+            
+            hCmd = 22;
+            wSpace = 10;
+            wButton = 50;
+            wEdit = 70;
+            wLabel = max(cellfun(@length, xlsArray(isLabel,3)))*6;
+            
+            hFig = hCmd*(size(xlsArray,1) + 2) + yPos*2;
+            wFig = wButton + wEdit + wLabel + wSpace*2 + xPos*2;
+            
+            winObj.Position = max(winObj.Position, [0 0 wFig hFig]);
+            
+            % Create a button for sending all command groups at the end
+            allLabel = uilabel(tab, ...
+                'Position', [xPos+wButton+wSpace, yPos-3, wButton+wSpace+wLabel, hCmd], ...
+                'Text', 'apply all commands above');
+            
+            uibutton(tab, ...
+                'Position', [xPos, yPos, wButton, hCmd], ...
+                'Text', 'All', ...
+                'ButtonPushedFcn', @(btn,event) SendGroupCmd(this, allLabel, 0));
+            
+            % Iterate through unique commands
+            for i = length(cmdNames) : -1 : 1
+                fieldInd = find(i == cmdInd);
                 
-                isNotNaN = cellfun(@(x) ~isnan(x(1)), xlsArray);
-                isCmdStr = isNotNaN(:,1);
-                isVal = isNotNaN(:,2);
-                isLabel = isNotNaN(:,3);
-                
-                cmdNames = xlsArray(isCmdStr,1);
-                cmdInd = cumsum(isCmdStr);
-                
-                % UI position parameters
-                xPos = 18;
-                yPos = 15;
-                
-                hCmd = 22;
-                wLabel = max(cellfun(@length, xlsArray(isLabel,3)))*6;
-                wEdit = 70;
-                wButton = 50;
-                wSpace = 10;
-                
-                hFig = hCmd*(size(xlsArray,1) + 1) + yPos*2;
-                wFig = wButton + wEdit + wLabel + wSpace*2 + xPos*2;
-                
-                % Create new UI controls
-                winObj = uifigure( ...
-                    'Name', cmdGroupName, ...
-                    'Position', [xPos, 50, wFig, hFig], ...
-                    'Resize', 'off');
-                
-                % Create a button for sending all command groups at the end
-                uibutton(winObj, ...
-                    'Position', [xPos, yPos, wButton, hCmd], ...
-                    'Text', 'All', ...
-                    'ButtonPushedFcn', @(btn,event) SendCmdGroup(this, winObj, 0));
-                
-                % Iterate through unique commands
-                for i = length(cmdNames) : -1 : 1
-                    fieldInd = find(i == cmdInd);
+                % Iterate through individual members
+                for j = length(fieldInd) : -1 : 1
                     
-                    % Iterate through individual members
-                    for j = length(fieldInd) : -1 : 1
-                        
-                        yPos = yPos + hCmd;
-                        
-                        % Create a button for sending the command group at the first member
-                        if j == 1
-                            winObj.UserData.cmdGroups(i).button = uibutton(winObj, ...
-                                'Position', [xPos, yPos, wButton, hCmd], ...
-                                'Text', cmdNames{i}, ...
-                                'ButtonPushedFcn', @(btn,event) SendCmdGroup(this, winObj, i));
-                        end
-                        
-                        % Create a text edit
-                        if isVal(fieldInd(j))
-                            winObj.UserData.cmdGroups(i).edits{j} = uieditfield(winObj, 'text', ...
-                                'Position', [xPos+wButton+wSpace, yPos, wEdit, hCmd], ...
-                                'Value', num2str(xlsArray{fieldInd(j),2}));
-                        else
-                            winObj.UserData.cmdGroups(i).edits{j} = [];
-                        end
-                        
-                        % Create a descriptive label
-                        if isLabel(fieldInd(j))
-                            uilabel(winObj, ...
-                                'Position', [xPos+wButton+wEdit+wSpace*2, yPos, wLabel, hCmd], ...
-                                'Text', xlsArray{fieldInd(j),3});
-                        end
+                    yPos = yPos + hCmd;
+                    
+                    % Create a button for sending the command group at the first member
+                    if j == 1
+                        allLabel.UserData.cmds(i).button = uibutton(tab, ...
+                            'Position', [xPos, yPos, wButton, hCmd], ...
+                            'Text', cmdNames{i}, ...
+                            'ButtonPushedFcn', @(btn,event) SendGroupCmd(this, allLabel, i));
+                    end
+                    
+                    % Create a text edit
+                    if isVal(fieldInd(j))
+                        allLabel.UserData.cmds(i).edits{j} = uieditfield(tab, 'text', ...
+                            'Position', [xPos+wButton+wSpace, yPos, wEdit, hCmd], ...
+                            'Value', num2str(xlsArray{fieldInd(j),2}));
+                    else
+                        allLabel.UserData.cmdGroups(i).edits{j} = [];
+                    end
+                    
+                    % Create a descriptive label
+                    if isLabel(fieldInd(j))
+                        uilabel(tab, ...
+                            'Position', [xPos+wButton+wEdit+wSpace*2, yPos-3, wLabel, hCmd], ...
+                            'Text', xlsArray{fieldInd(j),3});
                     end
                 end
-                
-                this.cmdGroupWins(end+1) = winObj;
-            catch
-                if exist('winObj', 'var')
-                    delete(winObj);
-                end
-                
-                uialert(this.svWin.UIFigure, ...
-                    'Cannot create this command group. Please check the format of the content.', ...
-                    cmdGroupName, ...
-                    'Icon', 'warning', ...
-                    'Modal', true);
             end
         end
         

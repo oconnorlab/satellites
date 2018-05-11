@@ -264,7 +264,7 @@ classdef Satellites
             result.timeTable = timeTb;
             result.valueTable = valueTb;
             result.trialTimeRef = trialTimeRef;
-            result.log = svLog;
+            result.info.log = svLog;
             
         end
         
