@@ -1,0 +1,7 @@
+ManyVibMotor	KEYWORD1
+vibrate		KEYWORD2
+vibrateDutyCycle	KEYWORD2
+stop		KEYWORD2
+getDutyCycle	KEYWORD2
+setResolution	KEYWORD2
+getResolution	KEYWORD2

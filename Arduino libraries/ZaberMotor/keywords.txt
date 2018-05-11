@@ -1,0 +1,22 @@
+ZaberMotor	KEYWORD1
+
+setSerial	KEYWORD2
+setRef	KEYWORD2
+setJitter	KEYWORD2
+setMaxSpeed	KEYWORD2
+setAcceleration	KEYWORD2
+
+home	KEYWORD2
+
+move	KEYWORD2
+moveMax	KEYWORD2
+
+streamLive	KEYWORD2
+streamDisable	KEYWORD2
+streamLine	KEYWORD2
+streamArc	KEYWORD2
+streamCirc	KEYWORD2
+streamCork	KEYWORD2
+streamUncord	KEYWORD2
+
+read	KEYWORD2

@@ -1,0 +1,9 @@
+ManyStepper	KEYWORD1
+step		KEYWORD2
+setPeriod	KEYWORD2
+getPeriod	KEYWORD2
+setActionTime	KEYWORD2
+getActionTime	KEYWORD2
+enableHolding	KEYWORD2
+disableHolding	KEYWORD2
+isHolding	KEYWORD2

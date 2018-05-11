@@ -1,0 +1,12 @@
+ManyRig		KEYWORD1
+
+isPawOn		KEYWORD2
+isLickOn	KEYWORD2
+playTone	KEYWORD2
+playSweep	KEYWORD2
+playNoise	KEYWORD2
+deliverWater	KEYWORD2
+deliverOdor	KEYWORD2
+deliverAirPuff	KEYWORD2
+sendTTL		KEYWORD2
+choose		KEYWORD2

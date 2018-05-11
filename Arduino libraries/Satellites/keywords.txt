@@ -1,0 +1,15 @@
+Satellites	KEYWORD1
+setDelimiter	KEYWORD2
+getDelimiter	KEYWORD2
+setSerial	KEYWORD2
+attachReader	KEYWORD2
+detachReader	KEYWORD2
+getCmdName	KEYWORD2
+getIndex	KEYWORD2
+getValue	KEYWORD2
+serialRead	KEYWORD2
+serialReadCmd	KEYWORD2
+delay	KEYWORD2
+delayUntil	KEYWORD2
+delayContinue	KEYWORD2
+sendData	KEYWORD2
