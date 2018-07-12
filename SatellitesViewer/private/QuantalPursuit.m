@@ -59,7 +59,7 @@ elseif obj.BeginWith('trialNum,')
     ax1.XLim = [0 5];
     t0 = ss{2} / 1000;
     
-elseif obj.BeginWith('posIndex,')
+elseif obj.BeginWith('angle,')
     % Plot lickport movement
     tOn = ss{2} / 1000 - t0;
     lickportPos = ss{3};

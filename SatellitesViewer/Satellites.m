@@ -156,27 +156,28 @@ classdef Satellites
             p.KeepUnmatched = true;
             p.addRequired('svPath');
             p.addRequired('delimiterEventName', @ischar);
-            p.addOptional('svMetaPath', '', @(x) exist(x, 'file'));
             p.addParameter('timeVars', {}, @iscell);
             p.addParameter('valueVars', {}, @iscell);
+            p.addParameter('timeScaler', 1, @isscalar);
             p.addParameter('mask', [], @(x) isnumeric(x) || islogical(x));
             
             p.parse(svPath, delimiterEventName, varargin{:});
-            svMetaPath = p.Results.svMetaPath;
             timeVars = p.Results.timeVars;
             valueVars = p.Results.valueVars;
-            trialMask = p.Results.mask(:);
+            timeScaler = p.Results.timeScaler;
+            epMask = p.Results.mask(:);
             
             
             % Load SerialViewer history data
             if isempty(svPath)
-                svPath = Browse.File([], 'Please select a SerialViewer log file', {'*.mat; *.txt'});
+                svPath = MBrowse.File([], 'Please select a SerialViewer log file', {'*.mat; *.txt'});
             end
             
             if isempty(svPath)
+                result = [];
                 return;
             else
-                disp('Load SatellitesViewer (or SerialViewer) log file.');
+                disp('Loading SatellitesViewer log file.');
                 svLog = Satellites.Read(svPath);
                 events = svLog.message(svLog.isInput);
             end
@@ -187,19 +188,19 @@ classdef Satellites
             
             
             % Initialize tables
-            trialTimeRef = NaN(size(episodes));
+            episodeTimeRef = NaN(size(episodes));
             timeTb = cell(length(episodes), length(timeVars));
             valueTb = cell(length(episodes), length(valueVars));
             
             
-            % Extract events trial by trial
+            % Extract events trial by episode
             for i = 1 : length(episodes)
                 
                 % Categorize events
                 eventStruct = Satellites.ParseByEventType(episodes{i});
                 
                 % Find episode reference time which is determined by the episode delimiter event
-                trialTimeRef(i) = str2double(eventStruct.(delimiterEventName){2});
+                episodeTimeRef(i) = str2double(eventStruct.(delimiterEventName){2}) * timeScaler;
                 
                 % Extract for time table
                 for k = 1 : length(timeVars)
@@ -207,8 +208,8 @@ classdef Satellites
                     
                     if isfield(eventStruct, fieldName)
                         % Take relative time wrt the reference time
-                        t = str2double(eventStruct.(fieldName)(:,2));
-                        timeTb{i,k} = t - trialTimeRef(i);
+                        t = str2double(eventStruct.(fieldName)(:,2)) * timeScaler;
+                        timeTb{i,k} = t - episodeTimeRef(i);
                     else
                         % Fill in NaN when the event does not exist
                         timeTb{i,k} = NaN;
@@ -252,18 +253,18 @@ classdef Satellites
             end
             
             
-            % Remove unwanted trials
-            if ~isempty(trialMask)
-                timeTb = timeTb(trialMask,:);
-                valueTb = valueTb(trialMask,:);
-                trialTimeRef = trialTimeRef(trialMask);
+            % Remove unwanted episodes
+            if ~isempty(epMask)
+                timeTb = timeTb(epMask,:);
+                valueTb = valueTb(epMask,:);
+                episodeTimeRef = episodeTimeRef(epMask);
             end
             
             
             % Return results
             result.timeTable = timeTb;
             result.valueTable = valueTb;
-            result.trialTimeRef = trialTimeRef;
+            result.episodeTimeRef = episodeTimeRef;
             result.info.log = svLog;
             
         end
