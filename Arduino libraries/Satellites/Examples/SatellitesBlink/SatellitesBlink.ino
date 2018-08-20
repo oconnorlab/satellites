@@ -18,7 +18,7 @@ Satellites sr;
   Pin 13 has an LED connected on most Arduino boards.
   Pin 11 has the LED on Teensy 2.0
   Pin 6  has the LED on Teensy++ 2.0
-  Pin 13 has the LED on Teensy 3.0
+  Pin 13 has the LED on Teensy 3.x
 */
 int ledPin = 13;
 
@@ -32,6 +32,10 @@ void setup()
 {
   // Initialize serial (not necessary on Teensy)
   Serial.begin(115200);
+  /*
+    On your computer, make sure the baud rate is consistent 
+    and add either (or both) newline (NL) and carriage return (CR) to outgoing messages
+  */
   
   // Initialize the LED pin as an output
   pinMode(ledPin, OUTPUT);
@@ -59,24 +63,26 @@ void loop()
 void myReader()
 {
   /*
-     This function is called by each part of a input serial command, respectively and sequentially.
-     It takes no input and return nothing.
-     
-     Let's say a user sent "NAME,123,456,789". It contains four parts separated by comma delimiters.
-     In each function call, you can get three variables - command name string, index and value. 
-       When myReader is on "NAME", the command name string is "NAME", index is 0, value is always 0;
-       when on "123", the command name string is "NAME", index is 1, value is 123; 
-       when on "456", the command name string is "NAME", index is 2, value is 456; 
-       when on "789", the command name string is "NAME", index is 3, value is 789. 
-     
-     Here are the rules for a legitimate command: 
-       It begins with command name. 
-       Command name is followed by an arbitrary number of values (including no value).
-       Command name and each value (if any) are separated by delimiter character.
-       Command name and values should (obviously) not contain delimiter character.
-       Values can only be integer numbers. Other characters will be ignored. 
-       The value and index at command name are both 0.
-       If there is no value between two delimiters, the value will be 0 by default.
+    This function is called by each part of a input serial command, respectively and sequentially.
+    It takes no input and return nothing.
+    
+    Let's say a user sends "NAME,123,456,789" (followed by a return character). It contains four 
+    parts separated by comma delimiters, thus myReader will be run four times. In each function 
+    call, you can get three variables - command name string, index and value. 
+      When myReader is called at "NAME", the command name string is "NAME", index is 0, value is always 0;
+      when at "123", the command name string is "NAME", index is 1, value is 123; 
+      when at "456", the command name string is "NAME", index is 2, value is 456; 
+      when at "789", the command name string is "NAME", index is 3, value is 789. 
+    
+    Here are the rules for a legal command: 
+      1) It begins with a command name. 
+      2) The command name is followed by an arbitrary number of values (including no value).
+      3) The command name and each value (if any) are separated by delimiter character.
+      4) The command name and values should (obviously) not contain delimiter character.
+      5) Values can only be integer numbers (can be negative). Non-numarical characters will be ignored. 
+      6) The value and index at command name are both 0.
+      7) If there is no value between two delimiters, the value will be 0 by default.
+      8) A command will not be processed without a newline or carriage return at the end. 
   */
 
   

@@ -1,7 +1,7 @@
 /*
 Satellites.h - Library facilitating the control of behavioral experiments.
 Created by Duo Xu, September 24, 2016.
-Latest update on November 24, 2017.
+Latest update on August 16, 2018.
 Released into the public domain.
 */
 
@@ -11,7 +11,6 @@ Released into the public domain.
 
 
 #include "Arduino.h"
-#include "boardnames.h"
 
 
 class Satellites
@@ -37,8 +36,10 @@ public:
 	bool delayContinue(bool(*f)(void), unsigned long unitTime);
 
 	// Sending formatted data message
-	void setSerial(usb_serial_class* s);
-	void setSerial(HardwareSerial* s);
+	#if defined(usb_serial_class)
+	void setSerial(usb_serial_class* s) { _serial = s; }
+	#endif
+	void setSerial(HardwareSerial* s) { _serial = s; }
 
 	// Format and send data message
 	unsigned long sendData(const char* tag, unsigned long t = millis());

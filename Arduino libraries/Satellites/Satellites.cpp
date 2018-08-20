@@ -1,7 +1,7 @@
 /*
 Satellites.h - Library facilitating the control of behavioral experiments.
 Created by Duo Xu, September 24, 2016.
-Latest update on September 7, 2017.
+Latest update on August 16, 2018.
 Released into the public domain.
 */
 
