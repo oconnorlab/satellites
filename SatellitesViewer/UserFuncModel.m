@@ -20,8 +20,8 @@ classdef UserFuncModel < handle
     properties
         channelName = '';
         msgIn = '';
-        isDisplay = true;
         msgOut = {};
+        isDisplay = true;
         userData;
     end
     
@@ -40,6 +40,9 @@ classdef UserFuncModel < handle
         
         function ClearUserData(this)
             % Set userData variable to empty
+            this.msgIn = '';
+            this.msgOut = {};
+            this.isDisplay = true;
             this.userData = [];
         end
         

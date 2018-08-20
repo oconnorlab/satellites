@@ -60,7 +60,7 @@ classdef SatellitesViewerChannel < handle
             this.config.chanName = '';
             this.config.refreshRate = 10;               % Hz
             this.config.msgPrefix = '';
-            this.config.userFuncName = 'none';
+            this.config.userFuncName = '';
             
             this.config.serialPort = '';
             this.config.serialBaudRate = 115200;
@@ -547,6 +547,7 @@ classdef SatellitesViewerChannel < handle
                     for i = 1 : length(msgOut)
                         this.SendMessage(msgOut{i});
                     end
+                    this.userFuncObj.msgOut = {};
                     
                 catch e
                     % Reset user function to default

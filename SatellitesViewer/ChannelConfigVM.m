@@ -35,6 +35,17 @@ classdef ChannelConfigVM < handle
             this.cfgWin.ChannelNameEditField.Value = cfg.chanName;
             this.cfgWin.RefreshRateEditField.Value = cfg.refreshRate;
             this.cfgWin.MessagePrefixEditField.Value = cfg.msgPrefix;
+            this.cfgWin.UserFunctionEditField.Value = cfg.userFuncName;
+            if isempty(cfg.userFuncName) || isa(eval(['@' cfg.userFuncName]), 'function_handle')
+                this.cfgWin.UserFunctionEditField.Value = cfg.userFuncName;
+            else
+                this.cfgWin.UserFunctionEditField.Value = '';
+                uialart(this.cfgWin.UIFigure, ...
+                    sprintf('''%s'' is not a function. No user function is used.', cfg.userFuncName), ...
+                    'Connection Error', ...
+                    'Icon', 'error', ...
+                    'Modal', true);
+            end
             
             % Logging
             this.cfgWin.LogOutMsgCheckBox.Value = cfg.isLogOutputs;
@@ -42,25 +53,6 @@ classdef ChannelConfigVM < handle
             this.cfgWin.AddTimeTagCheckBox.Value = cfg.isTagTime;
             this.cfgWin.TagDelimiterEditField.Value = cfg.tagDelimiter;
             this.SimulateLogging();
-            
-            % Find available user functions
-            classPath = mfilename('fullpath');
-            classDir = fileparts(classPath);
-            userFuncFolderStruct = what(fullfile(classDir, 'private'));
-            userFuncNames = cellfun(@(x) x(1:end-2), userFuncFolderStruct.m, 'Uni', false);
-            this.cfgWin.UserFunctionDropDown.Items = [{'none'}; userFuncNames];
-            
-            % Select user function
-            try
-                this.cfgWin.UserFunctionDropDown.Value = cfg.userFuncName;
-            catch
-                this.cfgWin.UserFunctionDropDown.Value = 'none';
-                uialart(this.cfgWin.UIFigure, ...
-                    sprintf('''%s'' is no longer an available user function. No user function is used.', userFuncName), ...
-                    'Connection Error', ...
-                    'Icon', 'error', ...
-                    'Modal', true);
-            end
             
             % Serial communication
             this.RefreshSerialPorts(cfg.serialPort);
@@ -194,7 +186,7 @@ classdef ChannelConfigVM < handle
         function ClearUserFuncData(this)
             % Clear user function data
             
-            this.chan.userFuncObj.funcData = [];
+            this.chan.userFuncObj.ClearUserData();
         end
         
         function SaveConfig(this)
@@ -206,7 +198,7 @@ classdef ChannelConfigVM < handle
             newCfg.chanName = this.cfgWin.ChannelNameEditField.Value;
             newCfg.refreshRate = this.cfgWin.RefreshRateEditField.Value;
             newCfg.msgPrefix = this.cfgWin.MessagePrefixEditField.Value;
-            newCfg.userFuncName = this.cfgWin.UserFunctionDropDown.Value;
+            newCfg.userFuncName = this.cfgWin.UserFunctionEditField.Value;
             
             newCfg.serialPort = this.cfgWin.SerialPortDropDown.Value;
             newCfg.serialMode = this.cfgWin.SerialProtocolButtonGroup.SelectedObject.Text;
