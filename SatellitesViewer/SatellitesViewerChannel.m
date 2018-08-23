@@ -528,7 +528,7 @@ classdef SatellitesViewerChannel < handle
             
             isDisplay = true;
             
-            if ~strcmp(this.config.userFuncName, 'none')
+            if ~isempty(this.config.userFuncName)
                 % Prepare user function object
                 this.userFuncObj.channelName = this.config.chanName;
                 this.userFuncObj.msgIn = inStr;
@@ -551,7 +551,7 @@ classdef SatellitesViewerChannel < handle
                     
                 catch e
                     % Reset user function to default
-                    this.config.userFuncName = 'none';
+                    this.config.userFuncName = '';
                     this.userFuncObj.ClearUserData();
                     
                     % Report and save error

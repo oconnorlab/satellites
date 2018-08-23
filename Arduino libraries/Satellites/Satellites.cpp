@@ -156,14 +156,6 @@ bool Satellites::delayContinue(bool(*f)(void), unsigned long unitTime) {
 
 
 
-void Satellites::setSerial(usb_serial_class* s) {
-	_serial = s;
-}
-
-void Satellites::setSerial(HardwareSerial* s) {
-	_serial = s;
-}
-
 void Satellites::serialSend(String msg) {
 	_serial->println(msg);
 }
