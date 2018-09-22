@@ -15,12 +15,14 @@ ManyRig::ManyRig()
 
 	waterValvePin = 4;
 	speakerPin = 6;
+	servoPin = 9;
 	numPin = 16;		// trial number
 	camPin = 17;		// camera
 	wsPin = 18;			// opto
 	audioPins[0] = 20;	// cue
 	audioPins[1] = 21;	// 
-	servoPin = 23;
+	frontVibratorPin = 22;
+	backVibratorPin = 23;
 
 
 	// Setup pin mode

@@ -221,8 +221,13 @@ classdef Satellites
                     fieldName = valueVars{k};
                     
                     if isfield(eventStruct, fieldName)
-                        % Take event values
-                        valueTb{i,k} = str2double(eventStruct.(fieldName)(:,3:end));
+                        if size(eventStruct.(fieldName),2) < 3
+                            % Fill in NaN when events do not have any value
+                            valueTb{i,k} = NaN(size(eventStruct.(fieldName),1), 1);
+                        else
+                            % Take event values
+                            valueTb{i,k} = str2double(eventStruct.(fieldName)(:,3:end));
+                        end
                     else
                         % Fill in NaN when the event does not exist
                         valueTb{i,k} = NaN;
@@ -265,6 +270,7 @@ classdef Satellites
             result.timeTable = timeTb;
             result.valueTable = valueTb;
             result.episodeTimeRef = episodeTimeRef;
+            result.info.filePath = svPath;
             result.info.log = svLog;
             
         end
