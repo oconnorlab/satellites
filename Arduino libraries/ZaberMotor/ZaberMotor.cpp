@@ -148,6 +148,29 @@ void ZaberMotor::streamArc(long centerx, long centery, long endx, long endy)
 	_serial->println(str);
 }
 
+void ZaberMotor::streamArc2(long startx, long starty, long endx, long endy)
+{
+    startx = convert(startx, 1);
+    starty = convert(starty, 2);
+    endx = convert(endx, 1);
+    endy = convert(endy, 2);
+
+    streamLive();
+
+	String str = "/01 0 stream 1 arc abs ";
+
+	if (endy > starty)
+		str.concat("cw ");
+	else
+		str.concat("ccw ");
+	
+	str = str.concat((startx+endx)/2) + " ";
+	str = str.concat((starty+endy)/2) + " ";
+	str = str.concat(endx) + " ";
+	str.concat(endy);
+	_serial->println(str);
+}
+
 void ZaberMotor::streamCirc(long centerx, long centery)
 {
     centerx = convert(centerx, 1);

@@ -28,6 +28,7 @@ public:
 	void streamDisable();
     void streamLine(long pos1, long pos2);
     void streamArc(long centerx, long centery, long endx, long endy);
+    void streamArc2(long startx, long starty, long endx, long endy);
     void streamCirc(long centrex, long centrey);
     void streamCork();
     void streamUncork();
