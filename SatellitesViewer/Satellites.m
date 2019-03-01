@@ -3,431 +3,399 @@ classdef Satellites
     %   Detailed explanation goes here
     
     methods(Static)
-        function result = Read(svPath, varargin)
-            % Read SatellitesViewer log
+        function [txtStr, txtLines] = ReadTxt(svPath)
+            % Read plain text of SatellitesViewer log to string(s). 
             % 
-            %   result = Read(svPath)
-            %   result = Read(svPath, svMetaPath)
-            %   result = Read(svPath, ..., 'hasIOTag', ture);
-            %   result = Read(svPath, ..., 'hasTimeTag', true);
-            %   result = Read(svPath, ..., 'tagDelimiter', ',');
-            %   result = Read(svPath, ..., 'msgDelimiter', ',');
+            %   [txtStr, txtLines] = Satellites.ReadTxt()
+            %   [txtStr, txtLines] = Satellites.ReadTxt(svPath)
+            % 
+            % Input
+            %   svPath              The path of a SatellitesViewer log file. In fact, you can use this method
+            %                       to read any text file where lines are delimited by newline return \n. If 
+            %                       svPath is not specified, a file selection window will be prompted. 
+            % Outputs
+            %   txtStr              The entire text file in a single string (character array). 
+            %   txtLines            A cell array where each element is a line of the text. 
+            % 
+            
+            % Handles user input
+            if nargin < 1 || isempty(svPath)
+                [svName, svDir] = uigetfile('*.txt', 'Please select a SatellitesViewer log file');
+                if ~svName
+                    txtStr = '';
+                    txtLines = {};
+                    return;
+                end
+                svPath = fullfile(svDir, svName);
+            end
+            
+            % Read SatellitesViewer log file to text
+            try
+                fid = fopen(svPath);
+                txtStr = fread(fid, '*char')';
+                fclose(fid);
+            catch
+                fclose(fid);
+                error(['Error occured when reading ' svPath]);
+            end
+            
+            % Split text string into lines
+            txtLines = Satellites.StringToLines(txtStr);
+        end
+        
+        function txtLines = StringToLines(txtStr)
+            % Split a string into lines based on return characters. Empty lines are removed. 
             %
-            % Inputs:
-            %   svPath              Path of a Satellites (or legacy SerialViewer) log file.
-            %   svMetaPath          Path of a Satellites metadata file.
-            %   'hasIOTag'          Whether or not to parse IO tag.
-            %   'hasTimeTag'        Whether or not to parse time tag.
-            %   'tagDelimiter'      Delimiter used to parse tags.
-            %   'msgDelimiter'      Delimiter used to parse message. Use empty string '' to prevent parsing.
+            %   txtLines = Satellites.StringToLines(txtStr)
+            %
+            
+            txtLines = strsplit(txtStr, {'\n', '\r'})';
+            isEmpty = cellfun(@isempty, txtLines);
+            txtLines(isEmpty) = [];
+        end
+        
+        function [ioType, sysTime, eventParts] = LineParts(txtLines, tagDelimiter, msgDelimiter)
+            % Parse out IO tag and/or system time tag from message string
             % 
-            % Outputs:
-            %   result              A struct of messages and, if applicable, related info. 
-            %                       message is a vector of parsed (each a cell array) or unparsed (each a string)
-            %                       messages. 
-            %                       isInput is a logical vector indicating which messages are input. 
-            %                       time is a vector of datetime object
+            %   [ioType, sysTime, eventParts] = Satellites.LineParts(txtLines);
+            %   [ioType, sysTime, eventParts] = Satellites.LineParts(txtLines, tagDelimiter);
+            %   [ioType, sysTime, eventParts] = Satellites.LineParts(txtLines, tagDelimiter, msgDelimiter);
+            %
+            % Inputs
+            %   txtLines            A cell array of lines read from a SatellitesViewer log file.
+            %   tagDelimiter        The delimiter for parsing IO and system time tags. The default is ','.
+            %   msgDelimiter        The delimiter for parsing event parts. The default is ','.
+            % Outputs
+            %   ioType              A [nLine,1] character array in which 'I' indicates input, 'O' output, and 
+            %                       'N' unspecified. 
+            %   sysTime             A [nLine,1] array of datetime objects. Unspecified times are filled with 
+            %                       placeholder values of 0001-01-01 00:00:00.000. 
+            %   eventParts          A [nLine,1] cell array of [1,nPart] cell arrays of event parts strings. 
             % 
             
             % Handle user inputs
-            p = inputParser();
-            p.addRequired('svPath', @(x) exist(x, 'file'));
-            p.addOptional('svMetaPath', '', @(x) exist(x, 'file'));
-            p.addParameter('hasIOTag', true, @islogical);
-            p.addParameter('hasTimeTag', true, @islogical);
-            p.addParameter('tagDelimiter', ',', @ischar);
-            p.addParameter('msgDelimiter', ',', @ischar);
-            
-            p.parse(svPath, varargin{:});
-            svMetaPath = p.Results.svMetaPath;
-            isIO = p.Results.hasIOTag;
-            isTime = p.Results.hasTimeTag;
-            dTag = p.Results.tagDelimiter;
-            dMsg = p.Results.msgDelimiter;
-            
-            if isIO && isTime && isempty(dTag)
-                error('Tag dilimiter cannot be empty.');
+            if nargin < 3
+                msgDelimiter = ',';
             end
             
-            
-            % Read log file
-            [~, ~, svExt] = fileparts(svPath);
-            
-            if strcmpi(svExt, '.txt')
-                % Read SatellitesViewer log file
-                try
-                    fid = fopen(svPath);
-                    svLog = textscan(fid, '%s', 'Delimiter', '\n');
-                    svLog = svLog{1};
-                    fclose(fid);
-                catch
-                    fclose(fid);
-                    error(['Error occured when reading ' svPath]);
-                end
-                
-                % Read SatellitesViewer metadata
-                if ~isempty(svMetaPath)
-                    try
-                        load(svMetaPath);
-                    catch
-                        error(['Error occured when loading ' svMetaPath]);
-                    end
-                end
-                
-            elseif strcmpi(svExt, '.mat')
-                % Read legacy SerialViewer log
-                result = Satellites.ReadSerialViewer(svPath, dMsg);
-                return;
+            if nargin < 2
+                tagDelimiter = ',';
             end
             
+            % Preallocation
+            ioType = repmat('N', numel(txtLines), 1);
+            sysTime = cell(numel(txtLines), 1);
+            eventParts = cell(numel(txtLines), 1);
             
-            % Process log data
-            for i = length(svLog) : -1 : 1
-                % Split fields by tag delimiter
-                msgParts = strsplit(svLog{i}, dTag);
+            % Process each line
+            for i = 1 : numel(txtLines)
+                % Split fields by the tag delimiter
+                strParts = strsplit(txtLines{i}, tagDelimiter);
                 
-                % Extract tags
-                if isIO
-                    io(i,1) = msgParts{1};
-                    msgParts(1) = [];
+                % Extract IO tag
+                if any(strcmp(strParts{1}, {'I', 'O'}))
+                    ioType(i) = strParts{1};
+                    strParts(1) = [];
                 end
                 
-                if isTime
-                    sysTime{i,1} = msgParts{1};
-                    msgParts(1) = [];
+                % Extract system time tag
+                if any(regexp(strParts{1}, '^[0-9]{17}$'))
+                    sysTime{i,1} = strParts{1};
+                    strParts(1) = [];
+                else
+                    sysTime{i,1} = '00010101000000000';
                 end
                 
-                % Parse message
-                if strcmp(dMsg, dTag)
-                    fullMsg = strjoin(msgParts, dTag);
-                    msgParts = strsplit(fullMsg, dMsg);
+                % Split event string
+                if strcmp(tagDelimiter, msgDelimiter)
+                    eventParts{i} = strParts;
+                else
+                    eventStr = strjoin(strParts, tagDelimiter);
+                    eventParts{i} = strsplit(eventStr, msgDelimiter);
                 end
-                
-                msg{i,1} = msgParts;
             end
             
-            % Convert date string to datetime
-            if isTime
-                sysTime = datetime(sysTime, 'InputFormat', 'yyyyMMddHHmmssSSS');
-            end
-            
-            % De-nest msg if no parsing occured
-            numParts = cellfun(@length, msg);
-            if all(numParts == 1)
-                msg = cellfun(@(x) x{1}, msg, 'Uni', false);
-            end
-            
-            
+            % Convert data type
+            sysTime = datetime(sysTime, ...
+                'InputFormat', 'yyyyMMddHHmmssSSS', ...
+                'Format', 'yyyy-MM-dd HH:mm:ss.SSS');
+        end
+        
+        function eventStruct = GroupEventsByType(eventParts)
+            % Categorize different event types into fields of a structure
+            % 
+            %   eventStruct = Satellites.GroupEventsByType(eventParts)
+            %
+            % Input
+            %   eventParts          A [nEvent,1] cell array of events. Each element is a [1,nPart] cell array 
+            %                       of strings in which the first element is event name. 
             % Output
-            result.message = msg;
+            %   eventStruct         A struct where each type of events are gathered in a field. 
+            % 
             
-            if isIO
-                result.isInput = io == 'I';
-            end
+            % Find unique event types
+            eventTags = cellfun(@(x) x{1}, eventParts, 'Uni', false);
+            [eventTypes, ~, eventInd] = unique(eventTags);
             
-            if isTime
-                result.sysTime = sysTime;
+            for i = 1 : numel(eventTypes)
+                % Legalize field name
+                fieldName = eventTypes{i};
+                isLegal = isstrprop(fieldName, 'alphanum') | fieldName == '_';
+                fieldName(~isLegal) = '_';
+                if ~isletter(fieldName(1))
+                    fieldName = ['event_' fieldName];
+                end
+                
+                % Add current type of events to struct
+                eventStruct.(fieldName) = eventParts(eventInd == i);
             end
         end
         
-        function result = ReadToTables(svPath, delimiterEventName, varargin)
-            % Read SatellitesViewer log and organize data into time table and value table
+        function episodes = GroupEventsByTime(eventParts, delimiterEvent)
+            % Delimit and group events into episodes by the occurence of certain events
             % 
-            %   result = ReadToTables(svPath, delimiterEventName)
-            %   result = ReadToTables(svPath, delimiterEventName, svMetaPath)
-            %   result = ReadToTables(svPath, delimiterEventName, ..., 'timeVars', {});
-            %   result = ReadToTables(svPath, delimiterEventName, ..., 'valueVars', {});
-            %   result = ReadToTables(svPath, delimiterEventName, ..., 'mask', []);
+            %   episodes = Satellites.GroupEventsByTime(eventParts, delimiterEvent)
             %
-            % Inputs:
-            %   svPath              Path of a Satellites (or legacy SerialViewer) log file.
-            %   delimiterEventName  
-            %   svMetaPath          Path of a Satellites metadata file.
-            %   'timeVars'          
-            %   'valueVars'         
-            %   'mask'              
-            % 
-            % Outputs:
-            %   result              
+            % Inputs
+            %   eventParts          A [nEvent,1] cell array of events. Each element is a [1,nPart] cell array 
+            %                       of strings in which the first element is event name. 
+            %   delimiterEvent      Name of the event that delimits different episodes. 
+            % Output
+            %   episodes            A [nEpisode,1] cell array where each element contains a delimited portion
+            %                       of the input eventParts. Importantly, The first episode contains events 
+            %                       before the first delimiter event. 
             % 
             
-            % Handle user inputs
-            p = inputParser();
-            p.KeepUnmatched = true;
-            p.addRequired('svPath');
-            p.addRequired('delimiterEventName', @ischar);
-            p.addParameter('timeVars', {}, @iscell);
-            p.addParameter('valueVars', {}, @iscell);
-            p.addParameter('timeScaler', 1, @isscalar);
-            p.addParameter('mask', [], @(x) isnumeric(x) || islogical(x));
+            % Find episode limits
+            eventTags = cellfun(@(x) x{1}, eventParts, 'Uni', false);
+            eventTags = eventTags(:);
+            delimiterInd = find(strcmp(eventTags, delimiterEvent));
+            assert(~isempty(delimiterInd), 'The delimiter event, ''%s'', cannot be found.', delimiterEvent);
+            episodeStartInd = [1; delimiterInd];
+            episodeEndInd = [episodeStartInd(2:end)-1; numel(eventTags)];
             
-            p.parse(svPath, delimiterEventName, varargin{:});
-            timeVars = p.Results.timeVars;
-            valueVars = p.Results.valueVars;
-            timeScaler = p.Results.timeScaler;
-            epMask = p.Results.mask(:);
-            
-            
-            % Load SerialViewer history data
-            if isempty(svPath)
-                svPath = MBrowse.File([], 'Please select a SerialViewer log file', {'*.mat; *.txt'});
+            % Separate events into episodes
+            episodes = cell(numel(episodeStartInd), 1);
+            for i = 1 : numel(episodeStartInd)
+                episodes{i} = eventParts(episodeStartInd(i) : episodeEndInd(i));
             end
-            
-            if isempty(svPath)
-                result = [];
-                return;
-            else
-                disp('Loading SatellitesViewer log file.');
-                svLog = Satellites.Read(svPath);
-                events = svLog.message(svLog.isInput);
-            end
-            
-            
-            % Decompose data temporally - by episode (usually trial)
-            episodes = Satellites.ParseByEventTime(events, delimiterEventName);
-            
-            
-            % Initialize tables
-            episodeTimeRef = NaN(size(episodes));
-            timeTb = cell(length(episodes), length(timeVars));
-            valueTb = cell(length(episodes), length(valueVars));
-            
-            
-            % Extract events trial by episode
-            for i = 1 : length(episodes)
-                
-                % Categorize events
-                eventStruct = Satellites.ParseByEventType(episodes{i});
-                
-                % Find episode reference time which is determined by the episode delimiter event
-                episodeTimeRef(i) = str2double(eventStruct.(delimiterEventName){2}) * timeScaler;
-                
-                % Extract for time table
-                for k = 1 : length(timeVars)
-                    fieldName = timeVars{k};
-                    
-                    if isfield(eventStruct, fieldName)
-                        % Take relative time wrt the reference time
-                        t = str2double(eventStruct.(fieldName)(:,2)) * timeScaler;
-                        timeTb{i,k} = t - episodeTimeRef(i);
-                    else
-                        % Fill in NaN when the event does not exist
-                        timeTb{i,k} = NaN;
-                    end
-                end
-                
-                % Extract for value table
-                for k = 1 : length(valueVars)
-                    fieldName = valueVars{k};
-                    
-                    if isfield(eventStruct, fieldName)
-                        if size(eventStruct.(fieldName),2) < 3
-                            % Fill in NaN when events do not have any value
-                            valueTb{i,k} = NaN(size(eventStruct.(fieldName),1), 1);
-                        else
-                            % Take event values
-                            valueTb{i,k} = str2double(eventStruct.(fieldName)(:,3:end));
-                        end
-                    else
-                        % Fill in NaN when the event does not exist
-                        valueTb{i,k} = NaN;
-                    end
-                end
-            end
-            
-            timeTb = cell2table(timeTb, 'VariableNames', timeVars);
-            valueTb = cell2table(valueTb, 'VariableNames', valueVars);
-            
-            
-            
-            % Try to convert cell array to numeric array
-            for k = 1 : length(timeVars)
-                try
-                    fieldName = timeVars{k};
-                    timeTb.(fieldName) = cell2mat(timeTb.(fieldName));
-                catch
-                end
-            end
-            
-            for k = 1 : length(valueVars)
-                try
-                    fieldName = valueVars{k};
-                    valueTb.(fieldName) = cell2mat(valueTb.(fieldName));
-                catch
-                end
-            end
-            
-            
-            % Remove unwanted episodes
-            if ~isempty(epMask)
-                timeTb = timeTb(epMask,:);
-                valueTb = valueTb(epMask,:);
-                episodeTimeRef = episodeTimeRef(epMask);
-            end
-            
-            
-            % Return results
-            result.timeTable = timeTb;
-            result.valueTable = valueTb;
-            result.episodeTimeRef = episodeTimeRef;
-            result.info.filePath = svPath;
-            result.info.log = svLog;
-            
         end
         
-        function events = RemoveEvents(events, eventTypes)
-            % Remove events by specified event type(s)
+        function eventParts = RemoveEventsByType(eventParts, eventTypes)
+            % Remove certain types of event
             % 
-            %   events = RemoveEvents(events, eventTypes)
+            %   eventParts = Satellites.RemoveEventsByType(eventParts, eventTypes)
             %
-            % Inputs:
-            %   events              A 1-D cell array of parsed messages. Each element is a 1-D 
-            %                       cell array where the first element is event name of the message. 
+            % Inputs
+            %   eventParts          A [nEvent,1] cell array of events. Each element is a [1,nPart] cell array 
+            %                       of strings in which the first element is event name. 
             %   eventTypes          A string or an array of strings of event names for removal. 
-            % 
-            % Outputs:
-            %   events              Resulting messages after removal. 
+            % Output
+            %   eventParts          Resulting cell array after removal. 
             % 
             
             eventTypes = cellstr(eventTypes);
             
-            if isstruct(events)
-                
-                events = rmfield(events, eventTypes);
-                
-            elseif iscell(events)
-                
-                eventTags = cellfun(@(x) x{1}, events, 'Uni', false);
-                
-                eventExcludeMask = false(size(events));
-                
-                for i = 1 : length(eventTypes)
-                    eventExcludeMask = eventExcludeMask | strcmp(eventTypes{i}, eventTags);
-                end
-                
-                events(eventExcludeMask) = [];
-                
-            else
-                error('Wrong data format. Should be either a struct or a vector of cell arrays.');
+            eventTags = cellfun(@(x) x{1}, eventParts, 'Uni', false);
+            
+            isRm = false(size(eventParts));
+            
+            for i = 1 : numel(eventTypes)
+                isRm = isRm | strcmp(eventTags, eventTypes{i});
             end
+            
+            eventParts(isRm) = [];
         end
         
-        function eventStruct = ParseByEventType(events)
-            % Categorize different event types into fields of a structure
+        function result = Import(txt, varargin)
+            % Read SatellitesViewer log and organize data into time table and value table.
             % 
-            %   eventStruct = ParseByEventType(events)
+            %   result = Satellites.Import()
+            %   result = Satellites.Import(txt)
+            %   result = Satellites.Import(txt, ..., 'TagDelimiter', ',');
+            %   result = Satellites.Import(txt, ..., 'MsgDelimiter', ',');
+            %   result = Satellites.Import(txt, ..., 'DelimiterEvent', '');
+            %   result = Satellites.Import(txt, ..., 'TimeScaling', 1);
             %
-            % Inputs:
-            %   events              A 1-D cell array of parsed messages. Each element is a 1-D 
-            %                       cell array where the first element is event name of the message. 
-            % 
-            % Outputs:
-            %   eventStruct         A struct in which each type of events are gathered in a field. 
-            % 
-            
-            % Find types
-            eventTags = cellfun(@(x) x{1}, events, 'Uni', false);
-            [eventTypes, ~, eventInd] = unique(eventTags);
-            
-            for i = length(eventTypes) : -1 : 1
-                % Masking for the current event type
-                eventDataVect = events(eventInd == i);
-                
-                % When the length of data is not uniform, take the shortest
-                eventLengths = cellfun(@length, eventDataVect);
-                if length(unique(eventLengths)) > 1
-                    warning(['"' fieldName '" has variable length of data. Only the common parts are taken.']);
-                    minLength = min(eventLengths);
-                    eventDataVect = cellfun(@(x) x(1:minLength), eventDataVect, 'Uni', false);
-                end
-                
-                % Legalize field name
-                try
-                    fieldName = strrep(eventTypes{i}, ' ', '_');
-                    eventStruct.(fieldName) = cat(1, eventDataVect{:});
-                catch
-                    warning(['"' fieldName '" is not a legal field name thus cannot included in the output struct']);
-                end
-            end
-        end
-        
-        function [episodes, preEpisode] = ParseByEventTime(events, delimiterTag)
-            % Delimit and group events into episodes by the occurence of certain events
-            % 
-            %   [episodes, preEpisode] = ParseByEventTime(events, delimiterTag)
-            %
-            % Inputs:
-            %   events              A 1-D cell array of parsed messages. Each element is a 1-D 
-            %                       cell array where the first element is event name of the message. 
-            %   delimiterTag        
-            % 
-            % Outputs:
-            %   episodes            A struct in which each type of events are gathered in a field. 
-            %   preEpisode          
-            % 
-            
-            eventTags = cellfun(@(x) x{1}, events, 'Uni', false);
-            episodeOnInd = find(strcmp(delimiterTag, eventTags));
-            episodeOffInd = [episodeOnInd(2:end) - 1; length(eventTags)];
-            
-            preEpisode = events(1 : episodeOnInd(1)-1);
-            
-            for i = length(episodeOnInd) : -1 : 1
-                episodes{i,1} = events(episodeOnInd(i) : episodeOffInd(i));
-            end
-        end
-        
-        function result = ReadSerialViewer(svPath, d)
-            % Convert SerialViewer data format to SatellitesViewer data format
-            
-            if nargin < 2
-                d = ',';
-            end
-            
-            load(svPath);
-            
-            % Find valid data messages
-            hasRigId = regexp(serialInHistory(:,1), ['^\d{1,3}' d]);
-            hasRigId = ~cellfun(@isempty, hasRigId);
-            if any(hasRigId)
-                serialInHistory = serialInHistory(hasRigId, :);
-            end
-            
-            % Split fields by delimiter
-            msg = cellfun(@(x) strsplit(x, d), serialInHistory(:,1), 'Uni', false);
-            
-            % Remove rig ID field
-            if any(hasRigId)
-                msg = cellfun(@(x) x(2:end), msg, 'Uni', false);
-            end
-            
-            % Convert numeric time to DateTime object
-            sysTime = datevec(cell2mat(serialInHistory(:,2)));
-            sysTime = datetime(sysTime);
-            
-            % Screen split data by length
-            numParts = cellfun(@length, msg);
-            isTooShort = numParts < 2;
-            if any(isTooShort)
-                warning(['Found message(s) having data fields less than 2 (EventTag,TimeStamp,...). ' ...
-                    'They will be excluded from result.']);
-            end
-            msg(isTooShort) = [];
-            sysTime(isTooShort) = [];
-            
+            % Inputs
+            %   txt                 1) The path of a SatellitesViewer log file. 2) A string of an entire log. 
+            %                       3) Lines of log stored in cell array. If not specified, a file selection 
+            %                       window will show up. 
+            %   'TagDelimiter'      Delimiter used to parse IO and system time tags. The default is ','.
+            %   'MsgDelimiter'      Delimiter used to parse parts in event message. The default is ','.
+            %   'DelimiterEvent'    The name of event that delimit the start of an episode. 
+            %   'TimeScaling'       A factor to scale timestamps. For example, a scaling factor of 1e-3 can 
+            %                       convert millisecond to second. The default is 1 - no scaling. 
             % Output
-            result.message = msg;
-            result.sysTime = sysTime;
-            result.isInput = true(size(msg));
+            %   result              A struct with the following fields.
+            %     txtLines            A [nLine,1] cell array of the original text. 
+            %     invalidLine         Indices of invalid lines of the text. 
+            %     lineParts           Output from Satellites.LineParts but only for valid lines. 
+            %     timeTable           A [nEpisode,nEventType] table of event times (wrt episode start time). 
+            %     valueTable          A [nEpisode,nEventType] table of event values correspongding to each 
+            %                         event time in the timeTable. 
+            %     episodeRefTime      A [nEpisode,1] array of absolute times when each episode begins. 
+            % 
+            
+            warning('off', 'backtrace');
+            
+            % Handle user inputs
+            p = inputParser();
+            p.KeepUnmatched = true;
+            p.addParameter('TagDelimiter', ',', @ischar);
+            p.addParameter('MsgDelimiter', ',', @ischar);
+            p.addParameter('DelimiterEvent', '', @ischar);
+            p.addParameter('TimeScaling', 1, @isscalar);
+            
+            p.parse(varargin{:});
+            tagDelimiter = p.Results.TagDelimiter;
+            msgDelimiter = p.Results.MsgDelimiter;
+            delimiterEvent = p.Results.DelimiterEvent;
+            timeScaling = p.Results.TimeScaling;
+            
+            % Load text data from file
+            if nargin < 1 || isempty(txt)
+                [svName, svDir] = uigetfile('*.txt', 'Please select a SatellitesViewer log file');
+                if ~svName
+                    result = [];
+                    return;
+                end
+                txt = fullfile(svDir, svName);
+            end
+            if ischar(txt) && exist(txt, 'file')
+                [~, txt] = Satellites.ReadTxt(txt);
+            end
+            if ~iscell(txt)
+                txt = Satellites.StringToLines(txt);
+            end
+            
+            % Parse out IO and system time tags
+            [ioType, sysTime, eventParts] = Satellites.LineParts(txt, tagDelimiter, msgDelimiter);
+            
+            % Validate data integrity
+            isValid = true(size(eventParts));
+            valFunc = @(x) all(isstrprop(x,'digit') | x == '-');
+            for i = 1 : numel(eventParts)
+                isNum = cellfun(valFunc, eventParts{i}(2:end));
+                if ~all(isNum)
+                    isValid(i) = false;
+                    warning('Cannot interpret values in line %i: %s', i, txt{i});
+                end
+            end
+            if ~all(isValid)
+                warning('Invalid messages will be ignored.');
+            end
+            ioType = ioType(isValid);
+            sysTime = sysTime(isValid);
+            eventParts = eventParts(isValid);
+            
+            % Find all types of event
+            eventParts = eventParts(ioType == 'I');
+            eventTypeStruct = Satellites.GroupEventsByType(eventParts);
+            eventTypes = fieldnames(eventTypeStruct);
+            
+            % Group events into episodes (e.g. trials)
+            if isempty(delimiterEvent)
+                episodes = {eventParts};
+            else
+                episodes = Satellites.GroupEventsByTime(eventParts, delimiterEvent);
+            end
+            
+            % Preallocation
+            refTime = NaN(numel(episodes), 1);
+            timeTb = cell(numel(episodes), numel(eventTypes));
+            valueTb = cell(numel(episodes), numel(eventTypes));
+            
+            % Extract events episode by episode
+            for i = 1 : numel(episodes)
+                
+                % Categorize events
+                epStruct = Satellites.GroupEventsByType(episodes{i});
+                
+                % Episode reference time
+                if i == 1
+                    % zero time
+                    refTime(i) = 0;
+                else
+                    % the current delimiter event time
+                    refTime(i) = getTimes(epStruct.(delimiterEvent)) * timeScaling;
+                end
+                
+                % Extract for each event type
+                for k = 1 : numel(eventTypes)
+                    eType = eventTypes{k};
+                    
+                    % Fill in NaN when the event does not exist
+                    if ~isfield(epStruct, eType)
+                        timeTb{i,k} = NaN;
+                        valueTb{i,k} = NaN;
+                        continue;
+                    end
+                    
+                    % Extract times
+                    timeTb{i,k} = getTimes(epStruct.(eType)) * timeScaling - refTime(i);
+                    
+                    % Extract values
+                    valueTb{i,k} = getValues(epStruct.(eType));
+                end
+            end
+            
+            timeTb = cell2table(timeTb, 'VariableNames', eventTypes);
+            valueTb = cell2table(valueTb, 'VariableNames', eventTypes);
+            
+            function et = getTimes(eParts)
+                % Get time stamp(s) from each event
+                et = cellfun(@(x) str2double(x{2}), eParts);
+            end
+            
+            function ev = getValues(eParts)
+                % Get value(s) from each event
+                ev = cellfun(@(x) str2double(x(3:end)), eParts, 'Uni', false); % out of range indexing returns NaN
+                
+                % Fill empty values with NaN
+                isEpt = cellfun(@isempty, ev);
+                ev(isEpt) = num2cell(NaN(sum(isEpt),1));
+                
+                % Denest output
+                nVals = cellfun(@numel, ev);
+                if min(nVals) == max(nVals)
+                    ev = cell2mat(ev);
+                end
+            end
+            
+            % Denest table columns of cell array with scalar element
+            for k = 1 : numel(eventTypes)
+                eType = eventTypes{k};
+                if isDenestable(timeTb.(eType))
+                    timeTb.(eType) = cell2mat(timeTb.(eType));
+                end
+                if isDenestable(valueTb.(eType))
+                    valueTb.(eType) = cell2mat(valueTb.(eType));
+                end
+            end
+            
+            function b = isDenestable(a)
+                if iscell(a)
+                    b = all(cellfun(@(x) isscalar(x) && isnumeric(x), a));
+                else
+                    b = false;
+                end
+            end
+            
+            % Return results
+            result.txtLines = txt;
+            result.invalidLine = find(~isValid);
+            result.lineParts.ioType = ioType;
+            result.lineParts.sysTime = sysTime;
+            result.lineParts.eventParts = eventParts;
+            result.timeTable = timeTb;
+            result.valueTable = valueTb;
+            result.episodeRefTime = refTime;
+            
+            warning('on', 'backtrace');
         end
     end
-    
 end
-
-
-
-
-
 
 
 
