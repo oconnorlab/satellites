@@ -1,18 +1,4 @@
-/*
-Satellites.h - Library facilitating the control of behavioral experiments.
-Created by Duo Xu, September 24, 2016.
-Latest update on August 16, 2018.
-Released into the public domain.
-*/
-
-#include "Arduino.h"
 #include "Satellites.h"
-
-
-
-Satellites::Satellites() {
-	// do nothing
-}
 
 void Satellites::setDelimiter(char d) {
 	_delimiter = d;
@@ -21,8 +7,6 @@ void Satellites::setDelimiter(char d) {
 char Satellites::getDelimiter() {
 	return _delimiter;
 }
-
-
 
 void Satellites::attachReader(void(*f)(void)) {
 	_parserFunc = f;
@@ -47,10 +31,10 @@ String Satellites::getCmdName() {
 void Satellites::serialRead() {
 	// Handle command identification and dispatching
 
-	if (_serial->available())
+	if (_serial.available())
 	{
 		// Read byte as char
-		char ch = _serial->read();
+		char ch = _serial.read();
 
 		if (_numDelimiter > 0 && isDigit(ch))
 		{
@@ -94,12 +78,11 @@ void Satellites::serialRead() {
 void Satellites::serialReadCmd() {
 	// Read full serial input
 
-	while (_serial->available())
+	while (_serial.available())
 	{
 		serialRead();
 	}
 }
-
 
 void Satellites::delay(unsigned long dur) {
 	// Delay and read serial command
@@ -154,10 +137,8 @@ bool Satellites::delayContinue(bool(*f)(void), unsigned long unitTime) {
 	return b;
 }
 
-
-
 void Satellites::serialSend(String msg) {
-	_serial->println(msg);
+	_serial.println(msg);
 }
 
 unsigned long Satellites::sendData(const char* tag, unsigned long t) {

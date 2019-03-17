@@ -1,23 +1,25 @@
 /*
 Satellites.h - Library facilitating the control of behavioral experiments.
-Created by Duo Xu, September 24, 2016.
-Latest update on August 16, 2018.
+Created by Duo Xu on September 24, 2016.
+Last updated by Duo Xu on March 17, 2019.
 Released into the public domain.
 */
 
 #ifndef Satellites_h
 #define Satellites_h
 
-
-
 #include "Arduino.h"
-
 
 class Satellites
 {
 public:
-	Satellites();
-
+	// Constructors
+	Satellites():_serial(Serial) {};
+	Satellites(HardwareSerial& serial):_serial(serial) {};
+	#if defined(usb_serial_class)
+		Satellites(usb_serial_class& serial):_serial(serial) {};
+	#endif
+	
 	void setDelimiter(char d);
 	char getDelimiter();
 
@@ -34,12 +36,6 @@ public:
 	bool delayUntil(bool(*f)(void));
 	bool delayUntil(bool(*f)(void), unsigned long timeout);
 	bool delayContinue(bool(*f)(void), unsigned long unitTime);
-
-	// Sending formatted data message
-	#if defined(usb_serial_class)
-	void setSerial(usb_serial_class* s) { _serial = s; }
-	#endif
-	void setSerial(HardwareSerial* s) { _serial = s; }
 
 	// Format and send data message
 	unsigned long sendData(const char* tag, unsigned long t = millis());
@@ -80,7 +76,7 @@ protected:
 	void (*_parserFunc)(void) = NULL;
 
 	// Sending
-	Stream* _serial = &Serial;
+	Stream& _serial;
 	void serialSend(String);
 
 };

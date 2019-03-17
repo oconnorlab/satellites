@@ -1,22 +1,14 @@
-#include "Arduino.h"
 #include "ZaberMotor.h"
-
-
 
 const long ZaberMotor::maxPos[2] = {100000,50000};
 
-ZaberMotor::ZaberMotor()
+ZaberMotor::ZaberMotor(Stream& serial):_serial(serial)
 {
-	// Initialze array variables
+	// Initialize array variables
 	for (int i = 0; i < 1; i++) {
 		isReverse[i] = false;
 		_refPos[i] = 0;
 	}
-}
-
-void ZaberMotor::setSerial(Stream* sObj)
-{
-	_serial = sObj;
 }
 
 void ZaberMotor::setRef(long ref, byte axId)
@@ -44,7 +36,7 @@ void ZaberMotor::setMaxSpeed(long v)
 {
 	String str = "/01 0 set maxspeed ";
 	str.concat(v);
-	_serial->println(str);
+	_serial.println(str);
 	streamDisable();
 }
 
@@ -52,7 +44,7 @@ void ZaberMotor::setAcceleration(int a)
 {
 	String str = "/01 0 set accel ";
 	str.concat(a);
-	_serial->println(str);
+	_serial.println(str);
 	streamDisable();
 }
 
@@ -64,7 +56,7 @@ void ZaberMotor::home(byte axId)
     String str = "/01 ";
     str.concat(axId);
     str.concat(" home");
-    _serial->println(str);
+    _serial.println(str);
     _isStream = false;
 }
 
@@ -78,7 +70,7 @@ void ZaberMotor::move(long pos, byte axId)
 	str.concat(axId);
 	str.concat(" move abs ");
 	str.concat(pos);
-	_serial->println(str);
+	_serial.println(str);
 	_isStream = false;
 }
 
@@ -90,32 +82,32 @@ void ZaberMotor::moveMax(byte axId)
     String str = "/01 ";
     str.concat(axId);
     str.concat(" move max");
-    _serial->println(str);
+    _serial.println(str);
 	_isStream = false;
 }
 
 void ZaberMotor::streamLive()
 {
 	if (!_isStream) {
-		_serial->println("/01 0 stream 1 setup live 1 2");
+		_serial.println("/01 0 stream 1 setup live 1 2");
 		_isStream = true;
 	}
 }
 
 void ZaberMotor::streamDisable()
 {
-	_serial->println("/01 0 stream 1 setup disable");
+	_serial.println("/01 0 stream 1 setup disable");
 	_isStream = false;
 }
 
 void ZaberMotor::streamCork()
 {
-	_serial->println("/01 0 stream 1 fifo cork");
+	_serial.println("/01 0 stream 1 fifo cork");
 }
 
 void ZaberMotor::streamUncork()
 {
-	_serial->println("/01 0 stream 1 fifo uncork");
+	_serial.println("/01 0 stream 1 fifo uncork");
 }
 
 void ZaberMotor::streamLine(long pos1, long pos2)
@@ -128,7 +120,7 @@ void ZaberMotor::streamLine(long pos1, long pos2)
 	String str = "/01 0 stream 1 line abs ";
 	str = str.concat(pos1) + " ";
 	str.concat(pos2);
-	_serial->println(str);
+	_serial.println(str);
 }
 
 void ZaberMotor::streamArc(long centerx, long centery, long endx, long endy)
@@ -145,7 +137,7 @@ void ZaberMotor::streamArc(long centerx, long centery, long endx, long endy)
     str = str.concat(centery) + " ";
 	str = str.concat(endx) + " ";
 	str.concat(endy);
-	_serial->println(str);
+	_serial.println(str);
 }
 
 void ZaberMotor::streamArc2(long startx, long starty, long endx, long endy)
@@ -168,7 +160,7 @@ void ZaberMotor::streamArc2(long startx, long starty, long endx, long endy)
 	str = str.concat((starty+endy)/2) + " ";
 	str = str.concat(endx) + " ";
 	str.concat(endy);
-	_serial->println(str);
+	_serial.println(str);
 }
 
 void ZaberMotor::streamCirc(long centerx, long centery)
@@ -181,7 +173,7 @@ void ZaberMotor::streamCirc(long centerx, long centery)
 	String str = "/01 0 stream 1 circle abs cw ";
 	str = str.concat(centerx) + " ";
 	str.concat(centery);
-	_serial->println(str);
+	_serial.println(str);
 }
 
 long ZaberMotor::convert(long pos, byte axId)
@@ -203,8 +195,8 @@ int ZaberMotor::genJitter()
 void ZaberMotor::read()
 {
 	char ch;
-	while (_serial->available()) {
-		ch = _serial->read();
+	while (_serial.available()) {
+		ch = _serial.read();
 		Serial.print(ch);
 	}
 }
