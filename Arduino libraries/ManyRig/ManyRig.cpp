@@ -7,7 +7,7 @@ ManyRig::ManyRig()
 	randPin = 28;
 
 	waterValvePin = 4;
-	speakerPin = 6;
+	framePin = 6;
 	servoPin = 9;
 	numPin = 16;	   // trial number
 	camPin = 17;	   // camera
@@ -20,7 +20,7 @@ ManyRig::ManyRig()
 	pinMode(randPin, INPUT);
 
 	pinMode(waterValvePin, OUTPUT);
-	pinMode(speakerPin, OUTPUT);
+	pinMode(framePin, OUTPUT);
 	pinMode(numPin, OUTPUT);
 	pinMode(camPin, OUTPUT);
 	pinMode(wsPin, OUTPUT);

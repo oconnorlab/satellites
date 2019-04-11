@@ -19,7 +19,7 @@ public:
 	byte randPin;
 
 	byte waterValvePin;
-	byte speakerPin;
+	byte framePin;
 	byte numPin;
 	byte camPin;
 	byte wsPin;
