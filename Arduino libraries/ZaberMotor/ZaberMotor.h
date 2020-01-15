@@ -8,7 +8,7 @@ class ZaberMotor
 public:
 	ZaberMotor(Stream& serial);
 
-	static const long maxPos[2];
+	long maxPos[2];
     bool isReverse[2];
     
     void setRef(long ref, byte axId = 1);

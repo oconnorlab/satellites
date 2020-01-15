@@ -1,10 +1,10 @@
 #include "ZaberMotor.h"
 
-const long ZaberMotor::maxPos[2] = {100000,50000};
-
 ZaberMotor::ZaberMotor(Stream& serial):_serial(serial)
 {
 	// Initialize array variables
+	maxPos[0] = 100000;
+	maxPos[1] = 50000;
 	for (int i = 0; i < 1; i++) {
 		isReverse[i] = false;
 		_refPos[i] = 0;
