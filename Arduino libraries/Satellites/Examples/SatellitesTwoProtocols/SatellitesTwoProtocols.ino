@@ -14,7 +14,7 @@ Satellites sr;
 
 
 // Pin numbers
-int lickPin = 2;      // receives digital lick signal
+int lickPin = 14;     // receives digital lick signal
 int valvePin = 13;    // controls water valve solenoid
 
 int ledPin = 12;      // controls an LED for viusal stimulation
@@ -24,10 +24,12 @@ int ledPin = 12;      // controls an LED for viusal stimulation
 int waterDur = 200;       // duration (ms) of valve opening time for water reward
 int itiDur = 3000;        // duration (ms) of inter-trial-interval
 int noLickDur = 1000;     // duration (ms) when the animal should not lick
-bool isTraining = false;  // whether or not the training should proceed
-
 int stimDur = 500;        // duration (ms) of visual stimulation
 int responseWinDur = 500; // duration (ms) of response window after stimulation
+
+
+// Runtime variables
+byte protocolId = 0;  // protocol selection
 
 
 void setup()
@@ -51,6 +53,16 @@ void loop()
 {
   // Read any incoming serial command
   sr.serialReadCmd();
+
+  // Execute training protocols
+  switch (protocolId) {
+    case 1:
+      lickForWater(); break;
+    case 2:
+      detectionTask(); break;
+    default:
+      break;
+  }
 }
 
 
@@ -66,5 +78,3 @@ void reportLick()
 {
   sr.sendData("lick");
 }
-
-

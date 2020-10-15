@@ -8,16 +8,10 @@ void myReader()
 
 
   // Do specific things based on the command name, index and value
-  if (idx == 0 && cmdStr.equals("LFW"))
+  if (idx == 1 && cmdStr.equals("PID"))
   {
-    // Execute the function for training
-    lickForWater();
-  }
-  else if (idx == 1 && cmdStr.equals("IST"))
-  {
-    // Change whether the training should procced or not
-    isTraining = val;
-    sr.sendData("isTraining set", millis(), isTraining);
+    // Switch to a certain protocol (or exit, when val == 0)
+    protocolId = val;
   }
   else if (idx == 1 && cmdStr.equals("WAT"))
   {
@@ -46,11 +40,6 @@ void myReader()
     digitalWrite(valvePin, LOW);
     sr.sendData("water delivered", valveOnTime, val);
   }
-  else if (idx == 1 && cmdStr.equals("DTT"))
-  {
-    // Execute detection task protocol
-    DetectionTask();
-  }
   else if (idx == 1 && cmdStr.equals("STD"))
   {
     // Change visual stimulus duration
@@ -75,8 +64,3 @@ void myReader()
     sr.sendData("visual stim delivered", stimOnTime, val);
   }
 }
-
-
-
-
-

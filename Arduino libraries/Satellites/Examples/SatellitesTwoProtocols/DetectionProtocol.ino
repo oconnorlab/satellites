@@ -1,29 +1,26 @@
 // Detection task protocol
-void DetectionTask()
+void detectionTask()
 {
   // Report the start of training
   sr.sendData("detectionTaskStart");
-
-  // Allow training to proceed
-  isTraining = true;
 
   // Store the number of trials
   int numTrials = 0;
 
   // Loop for trials
-  while (isTraining)
+  while (protocolId)
   {
     // Increment trial count
     numTrials++;
-
-    // Report current trial time and number
-    sr.sendData("trial", millis(), numTrials);
 
     // Wait for inter-trial-interval
     sr.delay(itiDur);
 
     // Wait for animal to stop licking for a while
     sr.delayContinue(isLickPinHigh, noLickDur);
+
+    // Report current trial time and number
+    sr.sendData("trial", millis(), numTrials);
 
     // Present stimulus
     /*
@@ -67,8 +64,3 @@ void DetectionTask()
   // Report the end of training
   sr.sendData("detectionTaskEnd");
 }
-
-
-
-
-

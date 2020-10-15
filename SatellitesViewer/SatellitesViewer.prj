@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1518786437" file="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer\SatellitesViewer.prj" location="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer" name="SatellitesViewer" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="4257160842" file="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer\SatellitesViewer.prj" location="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer" name="SatellitesViewer" target="target.mlapps" target-name="Package App">
     <param.appname>SatellitesViewer</param.appname>
     <param.authnamewatermark>Many Xu</param.authnamewatermark>
     <param.email>dxu14@jhmi.edu</param.email>
@@ -17,7 +17,7 @@
       <item>62</item>
     </param.products.id>
     <param.products.version>
-      <item>3.12</item>
+      <item>3.13</item>
     </param.products.version>
     <param.platforms />
     <param.output>${PROJECT_ROOT}\release</param.output>
@@ -52,7 +52,7 @@
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2017b</root>
+      <root>C:\Program Files\MATLAB\R2018a</root>
       <toolboxes>
         <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />

@@ -6,16 +6,14 @@ classdef UserFuncModel < handle
     %   msgIn               The incoming message string
     %   isDisplay           Logical variable indicating whether or not this message should be displayed in log window
     %   userData            Where user stores everything (e.g. runtime data, figure handles, etc.)
-    %   msgOut              A message string or a cell array of message strings to send out
+    %   msgOut              A string of message or a cell array of message strings to send out
     %   
     % Methods
     %   SendMessage         Send a message string out to device
     %   ClearUserData       Clear user data
     %   BeginWith           Test whether or not the incoming message begins with a given substring
     %
-    % More functionalities will be added in the future.
-    % 
-    % 
+    % (more functionalities will be added in the future)
     
     properties
         channelName = '';
@@ -29,6 +27,11 @@ classdef UserFuncModel < handle
         function this = UserFuncModel()
             % Constructor of UserFuncData class
             % do nothing
+        end
+        
+        function m = ReadMessage(this)
+            % Read the incoming message
+            m = this.msgIn;
         end
         
         function SendMessage(this, m)
