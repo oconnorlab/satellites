@@ -4,6 +4,7 @@ ManyRig::ManyRig()
 {
 	// Define pins in array
 	lickDetectorPin = 14;
+	//lickDetectorPinAUX = 15; // perch lick detector
 	randPin = 28;
 
 	waterValvePin = 4;
@@ -15,8 +16,12 @@ ManyRig::ManyRig()
 	audioPins[0] = 20; // cue
 	audioPins[1] = 21; //
 
+	//AUXperchVPin = 22; // on AudioAUX board, lickportV
+	//AUXperchHPin = 23; // on AudioAUX board, lickportH
+
 	// Setup pin mode
 	pinMode(lickDetectorPin, INPUT);
+	//pinMode(lickDectectorPinAUX, INPUT);
 	pinMode(randPin, INPUT);
 
 	pinMode(waterValvePin, OUTPUT);
@@ -24,6 +29,9 @@ ManyRig::ManyRig()
 	pinMode(numPin, OUTPUT);
 	pinMode(camPin, OUTPUT);
 	pinMode(wsPin, OUTPUT);
+
+	//pinMode(AUXperchVPin, INPUT);
+	//pinMode(AUXperchHPin, INPUT);
 
 	for (int i = 0; i < 2; i++)
 		pinMode(audioPins[i], OUTPUT);
@@ -36,6 +44,11 @@ bool ManyRig::isLickOn()
 {
 	return digitalRead(lickDetectorPin) == HIGH;
 }
+
+//bool ManyRig::isLickOnAUX() 
+//{
+//	return digitalRead(lickDetectorPinAUX) == HIGH;
+//}
 
 void ManyRig::triggerSound(byte idx, unsigned long durInMs)
 {
