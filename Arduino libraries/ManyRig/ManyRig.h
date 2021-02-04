@@ -16,7 +16,7 @@ public:
 
 	// Pin-out (values are defined in constructor)
 	byte lickDetectorPin;
-	//byte lickDetectorPinAUX;
+	byte lickDetectorPinAUX;
 	byte randPin;
 
 	byte waterValvePin;
@@ -27,12 +27,12 @@ public:
 	byte audioPins[2];
 	byte servoPin;
 
-	//byte AUXperchVPin;
-	//byte AUXperchHPin;
+	byte AUXperchVPin;
+	byte AUXperchHPin;
 
 	// IO
 	bool isLickOn();
-	//bool isLickOnAUX();
+	bool isLickOnAUX();
 	void triggerSound(byte idx, unsigned long durInMs);
 	void deliverWater(unsigned long durInMs);
 	void sendTTL(byte pin, unsigned long durInMs);
