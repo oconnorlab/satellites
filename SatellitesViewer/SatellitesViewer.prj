@@ -1,15 +1,15 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="4257160842" file="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer\SatellitesViewer.prj" location="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer" name="SatellitesViewer" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="4027385118" file="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer\SatellitesViewer.prj" location="C:\Users\Many\Dropbox (oconnorlab)\Documents\RnD\OConnor Lab\Repos\satellites repo\SatellitesViewer" name="SatellitesViewer" target="target.mlapps" target-name="Package App">
     <param.appname>SatellitesViewer</param.appname>
     <param.authnamewatermark>Many Xu</param.authnamewatermark>
     <param.email>dxu14@jhmi.edu</param.email>
-    <param.company>manyplayground</param.company>
+    <param.company>Daniel H O'Connor Lab</param.company>
     <param.icon />
     <param.icons />
     <param.summary>SatellitesViewer is a general-purposed app for serial and UDP/IP communication.</param.summary>
     <param.description>SatellitesViewer is a general-purposed app for serial and UDP/IP communication. One can use it to simply communicate with a serial device (e.g. Arduino), or to talk with another computer over a local network, or to deploy multiple messaging topologies involving serial/Wifi/LAN interfaces. This app streamlines your communications with easily customizable GUI (e.g. by editing an Excel spreadsheet). Its support of user functions makes online visualization and feedback control possible by basic MATLAB programming.</param.description>
     <param.screenshot />
-    <param.version>1.0</param.version>
+    <param.version>1.01</param.version>
     <param.products.name>
       <item>Instrument Control Toolbox</item>
     </param.products.name>
@@ -17,7 +17,7 @@
       <item>62</item>
     </param.products.id>
     <param.products.version>
-      <item>3.13</item>
+      <item>3.12</item>
     </param.products.version>
     <param.platforms />
     <param.output>${PROJECT_ROOT}\release</param.output>
@@ -26,7 +26,6 @@
       <param.icon />
       <param.icons />
       <param.screenshot />
-      <param.version />
       <param.platforms />
     </unset>
     <fileset.main>
@@ -52,7 +51,7 @@
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>C:\Program Files\MATLAB\R2018a</root>
+      <root>C:\Program Files\MATLAB\R2017b</root>
       <toolboxes>
         <toolbox name="fixedpoint" />
         <toolbox name="matlabcoder" />

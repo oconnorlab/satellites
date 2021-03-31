@@ -1,7 +1,6 @@
-function Oscilloscope(obj)
-%Oscilloscope Summary of this function goes here
+function SatelliteScopes(obj)
+%SatelliteScopes Summary of this function goes here
 %   Detailed explanation goes here
-
 
 % Declare runtime variables
 numChan = 4;
@@ -36,15 +35,12 @@ if obj.BeginWith('i')
         val = obj.userData.svStream.GetLatestByTime(3);
         
         if ~isempty(val)
-            
             t = val(:,1);
             val = val(:,2:end);
-            
             for i = numChan : -1 : 1
                 set(obj.userData.plotHandles(i), 'XData', t, 'YData', val(:,i));
                 set(obj.userData.axesHandles(i), 'XLim', [t(end) - dur, t(end)]);
             end
-            
         end
     end
     

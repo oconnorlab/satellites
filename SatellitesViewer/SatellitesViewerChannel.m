@@ -423,18 +423,21 @@ classdef SatellitesViewerChannel < handle
         function [success, errMsg] = SaveLog(this, filePath)
             % Save log in the current channel
             
-            success = true;
-            errMsg = '';
-            
             try
-                fileID = fopen(filePath, 'wt');
+                success = true;
+                errMsg = '';
                 
                 tagMask = [this.config.isTagIO, this.config.isTagTime];
-                tagArray = cellfun(@(x) [x, this.config.tagDelimiter], this.logArray(:,1:length(tagMask)), 'Uni', false);
-                
+                txtLines = cell(size(this.logArray,1), 1);
                 for i = 1 : size(this.logArray,1)
-                    fprintf(fileID, [tagArray{i,tagMask}, this.logArray{i,3}, '\n']);
+                    tagParts = cellfun(@(x) [x, this.config.tagDelimiter], this.logArray(i,1:2), 'Uni', false);
+                    txtLines{i} = [tagParts{tagMask} this.logArray{i,3} '\n'];
                 end
+                txt = cat(2, txtLines{:});
+                
+                fileID = fopen(filePath, 'wt');
+                fprintf(fileID, txt);
+                
             catch e
                 success = false;
                 errMsg = 'Error when saving log';
