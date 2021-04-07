@@ -27,9 +27,6 @@ ManyRig::ManyRig()
 	pinMode(camPin, OUTPUT);
 	pinMode(wsPin, OUTPUT);
 
-	pinMode(AUXperchVPin, INPUT);
-	pinMode(AUXperchHPin, INPUT);
-
 	for (int i = 0; i < 2; i++)
 		pinMode(audioPins[i], OUTPUT);
 
