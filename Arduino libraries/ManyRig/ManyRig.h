@@ -27,9 +27,6 @@ public:
 	byte audioPins[2];
 	byte servoPin;
 
-	byte AUXperchVPin;
-	byte AUXperchHPin;
-
 	// IO
 	bool isLickOn();
 	bool isLickOnAUX();

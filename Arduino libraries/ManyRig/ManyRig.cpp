@@ -4,7 +4,7 @@ ManyRig::ManyRig()
 {
 	// Define pins in array
 	lickDetectorPin = 14;
-	lickDetectorPinAUX = 21; // perch lick detector
+	lickDetectorPinAUX = 22; // perch lick detector
 	randPin = 28;
 
 	waterValvePin = 4;
@@ -15,9 +15,6 @@ ManyRig::ManyRig()
 	wsPin = 18;		   // opto
 	audioPins[0] = 20; // cue
 	audioPins[1] = 21; //
-
-	AUXperchVPin = 22; // on AudioAUX board, lickportV
-	AUXperchHPin = 23; // on AudioAUX board, lickportH
 
 	// Setup pin mode
 	pinMode(lickDetectorPin, INPUT);
