@@ -26,6 +26,8 @@ classdef SatellitesViewerChannel < handle
     properties(Dependent)
         chanName;
         mainPort;
+        isLogWinOpen;
+        logWinPos;
     end
     
     methods
@@ -43,6 +45,18 @@ classdef SatellitesViewerChannel < handle
         function val = get.chanName(this)
             % Return the channel name
             val = this.config.chanName;
+        end
+        function val = get.isLogWinOpen(this)
+            % Check if the log window is open
+            val = isfield(this.logWin, 'fig') && isvalid(this.logWin.fig);
+        end
+        function val = get.logWinPos(this)
+            % Find the position of log window
+            if this.isLogWinOpen
+                val = get(this.logWin.fig, 'Position');
+            else
+                val = [];
+            end
         end
     end
     
@@ -349,21 +363,22 @@ classdef SatellitesViewerChannel < handle
             end
         end
         
-        function ShowLogWindow(this)
-            % Show the log window of this channel
+        function ShowLogWindow(this, winPos)
+            % Show the log window of this channel and optionally resize it
+            %   winPos      Figure object's 'Position' value. [x y w h]
             
-            try
+            if this.isLogWinOpen
                 % Bring window to focus
                 figure(this.logWin.fig);
-            catch
+            else
                 % Create window
                 this.logWin.fig = figure(...
                     'Name', this.config.chanName, ...
                     'NumberTitle', 'off', ...
                     'MenuBar', 'none');
                 
-                figPos = get(this.logWin.fig, 'Position');
-                set(this.logWin.fig, 'Position', [figPos(1:2)-100 400 500]);
+                pos = this.logWinPos;
+                this.SetLogWindowPosition([pos(1:2)-100 300 500]);
                 
                 this.logWin.logBox = uicontrol(this.logWin.fig, ...
                     'Style', 'listbox', ...
@@ -379,7 +394,13 @@ classdef SatellitesViewerChannel < handle
                     'Position',[0 .95 1 .05], ...
                     'KeyPressFcn', {@CmdKeyPressCallback, this});
                 
+                % Fill in log
                 this.DisplayLog();
+            end
+            
+            % Resize window if the winPos arg is provided
+            if nargin > 1
+                this.SetLogWindowPosition(winPos);
             end
             
             function CmdKeyPressCallback(src, event, chan)
@@ -389,6 +410,12 @@ classdef SatellitesViewerChannel < handle
                     chan.SendMessage(strOut);
                     set(src, 'String', '');
                 end
+            end
+        end
+        
+        function SetLogWindowPosition(this, winPos)
+            if this.isLogWinOpen
+                set(this.logWin.fig, 'Position', winPos);
             end
         end
         
@@ -580,6 +607,4 @@ classdef SatellitesViewerChannel < handle
         end
         
     end
-    
 end
-

@@ -396,7 +396,3 @@ classdef Satellites
         end
     end
 end
-
-
-
-

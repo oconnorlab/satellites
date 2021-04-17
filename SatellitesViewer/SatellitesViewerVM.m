@@ -3,7 +3,7 @@ classdef SatellitesViewerVM < handle
     %   Detailed explanation goes here
     
     properties
-        % Window handles
+        % Interface
         svWin;
         chanConfigWin;
         cmdGroupWins;
@@ -91,6 +91,11 @@ classdef SatellitesViewerVM < handle
             end
             
             try
+                % Get main window info
+                s.svWinPos = this.svWin.UIFigure.Position;
+                s.logFileName = this.svWin.LogFileNameEdit.Value;
+                s.isAppendTime = this.svWin.AppendTimeCheckBox.Value;
+                
                 % Collect configurations
                 s.configs = cellfun(@(x) x.config, this.allChannels, 'Uni', false);
                 
@@ -102,10 +107,16 @@ classdef SatellitesViewerVM < handle
                     s.currentChannelIdx = [];
                 end
                 
+                % Get log window status and position
+                s.logWinPos = cellfun(@(x) x.logWinPos, this.allChannels, 'Uni', false);
+                
                 % Get quick commands
                 s.quickCmds = cellfun(@(x) x.Value, this.svWin.quickCmdEdits', 'Uni', false);
                 
-                % Save variables
+                % Get command group positions
+                % TBD
+                
+                % Save settings
                 fullPath = fullfile(pathName, fileName);
                 save(fullPath, '-struct', 's');
                 
@@ -161,20 +172,32 @@ classdef SatellitesViewerVM < handle
                 return;
             end
             
+            if ~exist('logWinPos', 'var')
+                logWinPos = repmat({[]}, size(configs));
+            end
+            
             if ~exist('quickCmds', 'var')
                 warning('quickCmds was not found. Use empty quick commands. ');
                 quickCmds = repmat({''}, 60, 1);
             end
             
             if ~exist('currentChannelIdx', 'var')
-                warning('currentChannelIdx was not found. Will select the first channel (if any). ');
                 currentChannelIdx = 1;
             end
             
-            % Apply configurations
-            stop(this.dispatcherTimer);
+            % Apply main window options
+            if exist('svWinPos', 'var')
+                this.svWin.UIFigure.Position = svWinPos;
+            end
+            if exist('logFileName', 'var')
+                this.svWin.LogFileNameEdit.Value = logFileName;
+            end
+            if exist('isAppendTime', 'var')
+                this.svWin.AppendTimeCheckBox.Value = isAppendTime;
+            end
             
             % Delete all channels
+            stop(this.dispatcherTimer);
             cellfun(@(x) x.DeleteChannel(), this.allChannels);
             this.allChannels = {};
             this.currentChannel = [];
@@ -185,6 +208,9 @@ classdef SatellitesViewerVM < handle
                     for i = length(configs) : -1 : 1
                         this.allChannels{i,1} = SatellitesViewerChannel();
                         this.allChannels{i}.ConfigureChannel(configs{i});
+                        if ~isempty(logWinPos{i})
+                            this.allChannels{i}.ShowLogWindow(logWinPos{i});
+                        end
                     end
                     this.currentChannel = this.allChannels{currentChannelIdx};
                 end
@@ -264,7 +290,7 @@ classdef SatellitesViewerVM < handle
                 
                 tabgp.Position = [0 0 winObj.Position(3:4)];
                 
-                this.cmdGroupWins(end+1) = winObj;
+                this.cmdGroupWins{end+1} = winObj;
                 
             catch e
                 uialert(this.svWin.UIFigure, 'Error occured when reading this file.', ...
@@ -298,7 +324,7 @@ classdef SatellitesViewerVM < handle
             % Close existing command group windows
             for i = 1 : length(this.cmdGroupWins)
                 try
-                    delete(this.cmdGroupWins(i));
+                    delete(this.cmdGroupWins{i});
                 catch
                 end
             end
@@ -737,12 +763,3 @@ classdef SatellitesViewerVM < handle
         
     end
 end
-
-
-
-
-
-
-
-
-
