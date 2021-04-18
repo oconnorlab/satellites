@@ -14,10 +14,9 @@ classdef SatellitesViewerChannel < handle
         mudp;
         
         % Logging
-        logMetadata;
+        logWin;
         logArray = cell(0,3);
         logArrayForDisplay = cell(0,1);
-        logWin;
         
         % User data
         userFuncObj;
@@ -89,6 +88,9 @@ classdef SatellitesViewerChannel < handle
             this.config.isTagIO = true;
             this.config.isTagTime = true;
             this.config.tagDelimiter = ',';
+            
+            this.config.isLogWinOpen = false;
+            this.config.logWinPos = [];
             
             
             % Create communication objects
@@ -171,35 +173,41 @@ classdef SatellitesViewerChannel < handle
             end
             
             success = isempty(errMsg);
-            
+            if ~success
+                return
+            end
             
             % Configuration
-            if success
-                % Find available fields
-                fieldNames = intersect(fieldnames(newCfg), fieldnames(this.config));
-                
-                % Clear user data if the user function is changed
-                if any(strcmp('userFuncName', fieldNames)) && ~strcmp(this.config.userFuncName, newCfg.userFuncName)
-                    this.userFuncObj.ClearUserData();
-                end
-                
-                % Update old configuration
-                for i = 1 : length(fieldNames)
-                    this.config.(fieldNames{i}) = newCfg.(fieldNames{i});
-                end
-                
-                % Update serial communication settings
-                this.mserial.config.BaudRate = this.config.serialBaudRate;
-                
-                this.DispIfVerbose('this.config');
-                this.DispIfVerbose(this.config);
-                
-                this.isSaved = true;
-                
-                % Apply changes to enabled channel
-                if this.config.isChanEnabled
-                    [~, errMsg] = this.EnableChannel();
-                end
+            
+            % Find available fields
+            fieldNames = intersect(fieldnames(newCfg), fieldnames(this.config));
+            
+            % Clear user data if the user function is changed
+            if any(strcmp('userFuncName', fieldNames)) && ~strcmp(this.config.userFuncName, newCfg.userFuncName)
+                this.userFuncObj.ClearUserData();
+            end
+            
+            % Update old configuration
+            for i = 1 : length(fieldNames)
+                this.config.(fieldNames{i}) = newCfg.(fieldNames{i});
+            end
+            
+            % Update serial communication settings
+            this.mserial.config.BaudRate = this.config.serialBaudRate;
+            
+            this.DispIfVerbose('this.config');
+            this.DispIfVerbose(this.config);
+            
+            this.isSaved = true;
+            
+            % Apply changes to enabled channel
+            if this.config.isChanEnabled
+                [~, errMsg] = this.EnableChannel();
+            end
+            
+            % Open log window if necessary
+            if this.config.isLogWinOpen
+                this.ShowLogWindow();
             end
         end
         
@@ -363,7 +371,7 @@ classdef SatellitesViewerChannel < handle
             end
         end
         
-        function ShowLogWindow(this, winPos)
+        function ShowLogWindow(this)
             % Show the log window of this channel and optionally resize it
             %   winPos      Figure object's 'Position' value. [x y w h]
             
@@ -375,10 +383,8 @@ classdef SatellitesViewerChannel < handle
                 this.logWin.fig = figure(...
                     'Name', this.config.chanName, ...
                     'NumberTitle', 'off', ...
-                    'MenuBar', 'none');
-                
-                pos = this.logWinPos;
-                this.SetLogWindowPosition([pos(1:2)-100 300 500]);
+                    'MenuBar', 'none', ...
+                    'CloseRequestFcn', {@SavePosCallback, this});
                 
                 this.logWin.logBox = uicontrol(this.logWin.fig, ...
                     'Style', 'listbox', ...
@@ -396,12 +402,15 @@ classdef SatellitesViewerChannel < handle
                 
                 % Fill in log
                 this.DisplayLog();
+                
+                % Resize window
+                if isempty(this.config.logWinPos)
+                    this.config.logWinPos = [this.logWinPos(1:2)-100 300 500];
+                end
+                this.SetLogWindowPosition(this.config.logWinPos);
             end
             
-            % Resize window if the winPos arg is provided
-            if nargin > 1
-                this.SetLogWindowPosition(winPos);
-            end
+            this.config.isLogWinOpen = true;
             
             function CmdKeyPressCallback(src, event, chan)
                 if strcmp(event.Key, 'return')
@@ -410,6 +419,18 @@ classdef SatellitesViewerChannel < handle
                     chan.SendMessage(strOut);
                     set(src, 'String', '');
                 end
+            end
+            
+            function SavePosCallback(src, event, chan)
+                chan.config.logWinPos = src.Position;
+                chan.config.isLogWinOpen = false;
+                delete(src);
+            end
+        end
+        
+        function CacheLogWindowPosition(this)
+            if this.isLogWinOpen
+                this.config.logWinPos = this.logWinPos;
             end
         end
         

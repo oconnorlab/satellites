@@ -7,6 +7,7 @@ classdef SatellitesViewerVM < handle
         svWin;
         chanConfigWin;
         cmdGroupWins;
+        cmdGroupTb = table();
         
         % Communication
         currentChannel;
@@ -97,6 +98,7 @@ classdef SatellitesViewerVM < handle
                 s.isAppendTime = this.svWin.AppendTimeCheckBox.Value;
                 
                 % Collect configurations
+                cellfun(@(x) x.CacheLogWindowPosition(), this.allChannels);
                 s.configs = cellfun(@(x) x.config, this.allChannels, 'Uni', false);
                 
                 if ~isempty(s.configs)
@@ -107,16 +109,14 @@ classdef SatellitesViewerVM < handle
                     s.currentChannelIdx = [];
                 end
                 
-                % Get log window status and position
-                s.logWinPos = cellfun(@(x) x.logWinPos, this.allChannels, 'Uni', false);
-                
                 % Get quick commands
                 s.quickCmds = cellfun(@(x) x.Value, this.svWin.quickCmdEdits', 'Uni', false);
                 
                 % Get command group positions
-                % TBD
+                this.UpdateCmdGroupTable();
+                s.cmdGroupTb = this.cmdGroupTb;
                 
-                % Save settings
+                % Save settings file
                 fullPath = fullfile(pathName, fileName);
                 save(fullPath, '-struct', 's');
                 
@@ -145,11 +145,9 @@ classdef SatellitesViewerVM < handle
             
             % Select settings file
             [fileName, dirPath] = uigetfile({'*.mat', 'MAT-file (*.mat)'});
-            
             if ~fileName
                 return;
             end
-            
             filePath = fullfile(dirPath, fileName);
             
             % Load MAT file
@@ -163,29 +161,8 @@ classdef SatellitesViewerVM < handle
                 return;
             end
             
-            % Check variables
-            if ~exist('configs', 'var')
-                uialert(this.svWin.UIFigure, 'Cannot find configs in this MAT file.', ...
-                    'Settings', ...
-                    'Icon', 'warning', ...
-                    'Modal', true);
-                return;
-            end
             
-            if ~exist('logWinPos', 'var')
-                logWinPos = repmat({[]}, size(configs));
-            end
-            
-            if ~exist('quickCmds', 'var')
-                warning('quickCmds was not found. Use empty quick commands. ');
-                quickCmds = repmat({''}, 60, 1);
-            end
-            
-            if ~exist('currentChannelIdx', 'var')
-                currentChannelIdx = 1;
-            end
-            
-            % Apply main window options
+            % Apply main window variables
             if exist('svWinPos', 'var')
                 this.svWin.UIFigure.Position = svWinPos;
             end
@@ -196,30 +173,57 @@ classdef SatellitesViewerVM < handle
                 this.svWin.AppendTimeCheckBox.Value = isAppendTime;
             end
             
-            % Delete all channels
+            % Quick commands
+            if ~exist('quickCmds', 'var')
+                warning('quickCmds was not found. Use empty quick commands. ');
+                quickCmds = repmat({''}, 60, 1);
+            end
+            
+            for i = 1 : min(length(quickCmds), length(this.svWin.quickCmdEdits))
+                if ~isempty(quickCmds{i})
+                    this.svWin.quickCmdEdits{i}.Value = quickCmds{i};
+                end
+            end
+            
+            
+            % Apply command group positions
+            if exist('cmdGroupTb', 'var')
+                this.cmdGroupTb = cmdGroupTb;
+            end
+            if ~isempty(this.cmdGroupWins)
+                cellfun(@RepositionWindow, this.cmdGroupWins);
+            end
+            
+            
+            % Delete existing channels
             stop(this.dispatcherTimer);
             cellfun(@(x) x.DeleteChannel(), this.allChannels);
             this.allChannels = {};
             this.currentChannel = [];
             
+            % Check channel settings
+            if ~exist('configs', 'var')
+                uialert(this.svWin.UIFigure, 'Cannot find configs in this MAT file.', ...
+                    'Settings', ...
+                    'Icon', 'warning', ...
+                    'Modal', true);
+                return
+            end
+            if ~exist('currentChannelIdx', 'var')
+                currentChannelIdx = 1;
+            end
+            if ~exist('logWinPos', 'var')
+                logWinPos = repmat({[]}, size(configs));
+            end
+            
             try
-                % Channels
+                % Setup channels
                 if ~isempty(configs)
-                    for i = length(configs) : -1 : 1
+                    for i = numel(configs) : -1 : 1
                         this.allChannels{i,1} = SatellitesViewerChannel();
                         this.allChannels{i}.ConfigureChannel(configs{i});
-                        if ~isempty(logWinPos{i})
-                            this.allChannels{i}.ShowLogWindow(logWinPos{i});
-                        end
                     end
                     this.currentChannel = this.allChannels{currentChannelIdx};
-                end
-                
-                % Quick commands
-                for i = 1 : min(length(quickCmds), length(this.svWin.quickCmdEdits))
-                    if ~isempty(quickCmds{i})
-                        this.svWin.quickCmdEdits{i}.Value = quickCmds{i};
-                    end
                 end
                 
             catch e
@@ -228,7 +232,7 @@ classdef SatellitesViewerVM < handle
                 this.allChannels = {};
                 this.currentChannel = [];
                 
-                uialert(this.svWin.UIFigure, 'Error occured when applying settings. Default settings is used.', ...
+                uialert(this.svWin.UIFigure, 'Error occured when setting up channels. Default settings is used.', ...
                     'Settings', ...
                     'Icon', 'warning', ...
                     'Modal', true);
@@ -244,61 +248,23 @@ classdef SatellitesViewerVM < handle
         end
         
         function LoadCmdGroup(this)
-            % Add GUI controls for command group
-            
-            % Read Excel file
-            [fileName, dirPath] = uigetfile({'*.xls; *.xlsx', 'Excel Files (*.xls, *.xlsx)'});
-            
-            if ~fileName
-                return;
-            end
-            
-            try
-                filePath = fullfile(dirPath, fileName);
-                [~, bareName] = fileparts(filePath);
-                
-                [~, sheets] = xlsfinfo(filePath);
-                
-                sheetInd = listdlg('PromptString', 'Select a sheet:', ...
-                    'SelectionMode', 'multi', ...
-                    'ListString', sheets);
-                
-                if isempty(sheetInd)
-                    return;
-                end
-                
-                % Create new UI controls
-                winObj = uifigure('Name', bareName, 'Resize', 'off');
-                winObj.Position = [winObj.Position(1:2) 100 100];
-                tabgp = uitabgroup(winObj);
-                
-                for i = 1 : length(sheetInd)
-                    [~, ~, xlsArray] = xlsread(filePath, sheetInd(i), '', 'basic');
-                    tab = uitab(tabgp, 'Title', sheets{sheetInd(i)});
-                    
-                    try
-                        this.CreatCmdGroupUI(winObj, tab, xlsArray);
-                    catch e
-                        delete(tab);
-                        uialert(this.svWin.UIFigure, ...
-                            'Cannot create this command group. Please check the format of the content.', ...
-                            tab.Title, ...
-                            'Icon', 'warning', ...
-                            'Modal', true);
-                    end
-                end
-                
-                tabgp.Position = [0 0 winObj.Position(3:4)];
-                
-                this.cmdGroupWins{end+1} = winObj;
-                
-            catch e
-                uialert(this.svWin.UIFigure, 'Error occured when reading this file.', ...
-                    'Loading command group', ...
-                    'Icon', 'warning', ...
-                    'Modal', true);
-                return;
-            end
+            % Load command groups
+            this.cmdGroupWins{end+1} = SatellitesViewerCmdGroup(this);
+        end
+        
+        function CleanUpCmdGroup(this)
+            % Clean up windows that no longer exist
+            val = cellfun(@(x) x.isWinOpen, this.cmdGroupWins);
+            this.cmdGroupWins(~val) = [];
+        end
+        
+        function UpdateCmdGroupTable(this)
+            % Update position table
+            this.CleanUpCmdGroup();
+            tb = table();
+            tb.winName = cellfun(@(x) x.winName, this.cmdGroupWins, 'Uni', false);
+            tb.winPos = cellfun(@(x) x.cgWin.Position, this.cmdGroupWins, 'Uni', false);
+            this.cmdGroupTb = tb;
         end
         
         function CloseApp(this)
@@ -324,7 +290,7 @@ classdef SatellitesViewerVM < handle
             % Close existing command group windows
             for i = 1 : length(this.cmdGroupWins)
                 try
-                    delete(this.cmdGroupWins{i});
+                    delete(this.cmdGroupWins{i}.cgWin);
                 catch
                 end
             end
@@ -627,30 +593,6 @@ classdef SatellitesViewerVM < handle
             this.Send(this.svWin.quickCmdEdits{cmdIdx}.Value);
         end
         
-        function SendGroupCmd(this, winObj, cmdIdx)
-            % Output formated command group
-            %
-            %   SendSerialCmdGroup(groupIdx)
-            %
-            % Inputs:
-            %   groupIdx        The index of a command group. If it is zero, all command groups will be sent.
-            
-            if cmdIdx ~= 0
-                outStr = winObj.UserData.cmds(cmdIdx).button.Text;
-                for j = 1 : length(winObj.UserData.cmds(cmdIdx).edits)
-                    if ~isempty(winObj.UserData.cmds(cmdIdx).edits{j})
-                        outStr = [outStr ',' winObj.UserData.cmds(cmdIdx).edits{j}.Value];
-                    end
-                end
-                this.Send(outStr);
-            else
-                for i = 1 : length(winObj.UserData.cmds)
-                    this.SendGroupCmd(winObj, i);
-                    pause(0.1);
-                end
-            end
-        end
-        
         function EnableChannelUI(this)
             % Enable communication related buttons
             
@@ -673,81 +615,6 @@ classdef SatellitesViewerVM < handle
             this.svWin.DeleteChannelButton.Enable = 'off';
             this.svWin.LoadSettingsButton.Enable = 'off';
             this.svWin.SaveSettingsButton.Enable = 'off';
-        end
-        
-        function CreatCmdGroupUI(this, winObj, tab, xlsArray)
-            % Create command group UI from one spreadsheet
-            
-            % Get content
-            xlsArray = xlsArray(2:end, 1:3);
-            
-            isNotNaN = cellfun(@(x) ~isnan(x(1)), xlsArray);
-            isCmdStr = isNotNaN(:,1);
-            isVal = isNotNaN(:,2);
-            isLabel = isNotNaN(:,3);
-            
-            cmdNames = xlsArray(isCmdStr,1);
-            cmdInd = cumsum(isCmdStr);
-            
-            % UI position parameters
-            xPos = 18;
-            yPos = 15;
-            
-            hCmd = 22;
-            wSpace = 10;
-            wButton = 50;
-            wEdit = 70;
-            wLabel = max(cellfun(@length, xlsArray(isLabel,3)))*6;
-            
-            hFig = hCmd*(size(xlsArray,1) + 2) + yPos*2;
-            wFig = wButton + wEdit + wLabel + wSpace*2 + xPos*2;
-            
-            winObj.Position = max(winObj.Position, [0 0 wFig hFig]);
-            
-            % Create a button for sending all command groups at the end
-            allLabel = uilabel(tab, ...
-                'Position', [xPos+wButton+wSpace, yPos-3, wButton+wSpace+wLabel, hCmd], ...
-                'Text', 'apply all commands above');
-            
-            uibutton(tab, ...
-                'Position', [xPos, yPos, wButton, hCmd], ...
-                'Text', 'All', ...
-                'ButtonPushedFcn', @(btn,event) SendGroupCmd(this, allLabel, 0));
-            
-            % Iterate through unique commands
-            for i = length(cmdNames) : -1 : 1
-                fieldInd = find(i == cmdInd);
-                
-                % Iterate through individual members
-                for j = length(fieldInd) : -1 : 1
-                    
-                    yPos = yPos + hCmd;
-                    
-                    % Create a button for sending the command group at the first member
-                    if j == 1
-                        allLabel.UserData.cmds(i).button = uibutton(tab, ...
-                            'Position', [xPos, yPos, wButton, hCmd], ...
-                            'Text', cmdNames{i}, ...
-                            'ButtonPushedFcn', @(btn,event) SendGroupCmd(this, allLabel, i));
-                    end
-                    
-                    % Create a text edit
-                    if isVal(fieldInd(j))
-                        allLabel.UserData.cmds(i).edits{j} = uieditfield(tab, 'text', ...
-                            'Position', [xPos+wButton+wSpace, yPos, wEdit, hCmd], ...
-                            'Value', num2str(xlsArray{fieldInd(j),2}));
-                    else
-                        allLabel.UserData.cmdGroups(i).edits{j} = [];
-                    end
-                    
-                    % Create a descriptive label
-                    if isLabel(fieldInd(j))
-                        uilabel(tab, ...
-                            'Position', [xPos+wButton+wEdit+wSpace*2, yPos-3, wLabel, hCmd], ...
-                            'Text', xlsArray{fieldInd(j),3});
-                    end
-                end
-            end
         end
         
         function DispIfVerbose(this, c)
