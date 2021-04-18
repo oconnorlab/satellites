@@ -262,8 +262,8 @@ classdef SatellitesViewerVM < handle
             % Update position table
             this.CleanUpCmdGroup();
             tb = table();
-            tb.winName = cellfun(@(x) x.winName, this.cmdGroupWins, 'Uni', false);
-            tb.winPos = cellfun(@(x) x.cgWin.Position, this.cmdGroupWins, 'Uni', false);
+            tb.winName = cellfun(@(x) x.winName, this.cmdGroupWins, 'Uni', false)';
+            tb.winPos = cellfun(@(x) x.cgWin.Position, this.cmdGroupWins, 'Uni', false)';
             this.cmdGroupTb = tb;
         end
         
