@@ -11,8 +11,8 @@
 #include <Satellites.h>
 
 
-// SatelliteRig object
-Satellites sr;
+// Satellites object
+Satellites sat;
 
 
 // LED pin
@@ -39,14 +39,14 @@ void setup()
   pinMode(ledPin, OUTPUT);
 
   // Attach the function we defined below to handle serial commands
-  sr.attachReader(myReader);
+  sat.attachReader(myReader);
 }
 
 
 void loop()
 {
   // Read any incoming serial command
-  sr.serialReadCmd();
+  sat.serialReadCmd();
 
   // Blink
   digitalWrite(ledPin, HIGH);
@@ -54,7 +54,7 @@ void loop()
   // Send a data message about turning on LED.
   // If a second argument for time is not provided, 
   // the current time (returned by millis()) will be used.
-  sr.sendData("ledOn");
+  sat.sendData("ledOn");
 
   delay(ledOnDuration);
 
@@ -63,7 +63,7 @@ void loop()
   // Send a data message about turning off LED.
   // If a second argument for time is not provided, 
   // the current time (returned by millis()) will be used.
-  sr.sendData("ledOff");
+  sat.sendData("ledOff");
 
   delay(ledOffDuration);
 }
@@ -73,9 +73,9 @@ void loop()
 void myReader()
 {
   // Get command information
-  String cmdStr = sr.getCmdName();
-  int idx = sr.getIndex();
-  long val = sr.getValue();
+  String cmdStr = sat.getCmdName();
+  int idx = sat.getIndex();
+  long val = sat.getValue();
 
 
   // Do specific things based on the command name, index and value
@@ -86,12 +86,12 @@ void myReader()
     // Send a data message to confirm that ledOnDuration was correctly assigned.
     // The value, ledOnDuration, is provided as the third argument.
     // For the second argument, we can simply use the current time.
-    sr.sendData("led on duration", millis(), ledOnDuration);
+    sat.sendData("led on duration", millis(), ledOnDuration);
   }
   else if (idx == 1 && cmdStr.equals("OffDur"))
   {
     ledOffDuration = val;
-    sr.sendData("led off duration", millis(), ledOffDuration);  // similar as above
+    sat.sendData("led off duration", millis(), ledOffDuration);  // similar as above
   }
   else if (idx == 1 && cmdStr.equals("OnOffDur"))
   {
@@ -109,7 +109,7 @@ void myReader()
 
     // Send a data message to report multiple values
     // When sending an array, the length must be provided as the fourth argument
-    sr.sendData("led on/off durations", millis(), durArray, arrayLength);
+    sat.sendData("led on/off durations", millis(), durArray, arrayLength);
   }
   else if (idx == 0 && cmdStr.equals("Pause five sec"))
   {
@@ -119,11 +119,6 @@ void myReader()
     delay(5000);
 
     // Send a data message to report the previously stored time
-    sr.sendData("pause began at", pauseBeginTime);
+    sat.sendData("pause began at", pauseBeginTime);
   }
 }
-
-
-
-
-

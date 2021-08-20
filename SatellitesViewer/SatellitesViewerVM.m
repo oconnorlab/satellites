@@ -6,7 +6,7 @@ classdef SatellitesViewerVM < handle
         % Interface
         svWin;
         chanConfigWin;
-        cmdGroupWins;
+        cmdGroupWins = {};
         cmdGroupTb = table();
         
         % Communication
