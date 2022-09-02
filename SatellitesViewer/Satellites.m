@@ -137,6 +137,7 @@ classdef Satellites
             eventTags = cellfun(@(x) x{1}, eventParts, 'Uni', false);
             [eventTypes, ~, eventInd] = unique(eventTags);
             
+            eventStruct = struct;
             for i = 1 : numel(eventTypes)
                 % Legalize field name
                 fieldName = eventTypes{i};
@@ -244,15 +245,18 @@ classdef Satellites
             p.KeepUnmatched = true;
             p.addParameter('TagDelimiter', ',', @ischar);
             p.addParameter('MsgDelimiter', ',', @ischar);
+            p.addParameter('ForceNumericValues', true, @islogical);
             p.addParameter('DelimiterEvent', '', @ischar);
             p.addParameter('TimeScaling', 1, @isscalar);
             
             p.parse(varargin{:});
             tagDelimiter = p.Results.TagDelimiter;
             msgDelimiter = p.Results.MsgDelimiter;
+            isForceNum = p.Results.ForceNumericValues;
             delimiterEvent = p.Results.DelimiterEvent;
             timeScaling = p.Results.TimeScaling;
             
+
             % Load text data from file
             if nargin < 1 || isempty(txt)
                 [svName, svDir] = uigetfile('*.txt', 'Please select a SatellitesViewer log file');
@@ -269,15 +273,30 @@ classdef Satellites
                 txt = Satellites.StringToLines(txt);
             end
             
+
             % Parse out IO and system time tags
             [ioType, sysTime, eventParts] = Satellites.LineParts(txt, tagDelimiter, msgDelimiter);
             
+
             % Validate data integrity
             isValid = true(size(eventParts));
-            valFunc = @(x) all(isstrprop(x,'digit') | x == '-');
+%             valFunc = @(x) all(isstrprop(x,'digit') | x == '-');
+            valFunc = @(x) isempty(x) || ~isnan(str2double(x));
             for i = 1 : numel(eventParts)
-                isNum = cellfun(valFunc, eventParts{i}(2:end));
-                if ~all(isNum)
+                % No need to validate output command
+                if ioType(i) == 'O'
+                    continue
+                end
+
+                % Check all fields or only timestamp
+                if isForceNum
+                    isNum = all(cellfun(valFunc, eventParts{i}(2:end)));
+                else
+                    isNum = valFunc(eventParts{i}{2});
+                end
+
+                % Record invalid event
+                if ~isNum
                     isValid(i) = false;
                     warning('Cannot interpret values in line %i: %s', i, txt{i});
                 end
@@ -289,6 +308,7 @@ classdef Satellites
             sysTime = sysTime(isValid);
             eventParts = eventParts(isValid);
             
+
             % Find all types of event
             eventParts = eventParts(ioType == 'I');
             eventTypeStruct = Satellites.GroupEventsByType(eventParts);
@@ -301,12 +321,12 @@ classdef Satellites
                 episodes = Satellites.GroupEventsByTime(eventParts, delimiterEvent);
             end
             
-            % Preallocation
+            
+            % Extract events episode by episode
             refTime = NaN(numel(episodes), 1);
             timeTb = cell(numel(episodes), numel(eventTypes));
             valueTb = cell(numel(episodes), numel(eventTypes));
-            
-            % Extract events episode by episode
+
             for i = 1 : numel(episodes)
                 
                 % Categorize events
@@ -328,7 +348,7 @@ classdef Satellites
                     % Fill in NaN when the event does not exist
                     if ~isfield(epStruct, eType)
                         timeTb{i,k} = NaN;
-                        valueTb{i,k} = NaN;
+%                         valueTb{i,k} = NaN;
                         continue;
                     end
                     
@@ -340,30 +360,41 @@ classdef Satellites
                 end
             end
             
-            timeTb = cell2table(timeTb, 'VariableNames', eventTypes);
-            valueTb = cell2table(valueTb, 'VariableNames', eventTypes);
-            
             function et = getTimes(eParts)
-                % Get time stamp(s) from each event
+                % Get timestamp(s) from an event
                 et = cellfun(@(x) str2double(x{2}), eParts);
             end
             
             function ev = getValues(eParts)
-                % Get value(s) from each event
-                ev = cellfun(@(x) str2double(x(3:end)), eParts, 'Uni', false); % out of range indexing returns NaN
-                
-                % Fill empty values with NaN
-                isEpt = cellfun(@isempty, ev);
-                ev(isEpt) = num2cell(NaN(sum(isEpt),1));
-                
-                % Denest output
-                nVals = cellfun(@numel, ev);
-                if min(nVals) == max(nVals)
-                    ev = cell2mat(ev);
+                % Get value(s) from an event
+                for n = numel(eParts) : -1 : 1
+                    val = eParts{n}(3:end);
+                    val = string(val);
+                    num = str2double(val);
+                    if all(~isnan(num))
+                        val = num;
+                    end
+                    ev{n,1} = val;
                 end
+                ev = vertcat(ev{:});
             end
             
-            % Denest table columns of cell array with scalar element
+            % Fill empty cells with NaN
+            for k = 1 : numel(eventTypes)
+                isEpt = cellfun(@isempty, valueTb(:,k));
+                if all(isEpt)
+                    nVal = 1;
+                else
+                    nVal = cellfun(@(x) size(x,2), valueTb(~isEpt,k));
+                end
+                valueTb(isEpt,k) = {NaN(1, min(nVal))};
+            end
+            
+            % Convert cell arrays to tables
+            timeTb = cell2table(timeTb, 'VariableNames', eventTypes);
+            valueTb = cell2table(valueTb, 'VariableNames', eventTypes);
+            
+            % Denest table columns with cell array of scalar elements
             for k = 1 : numel(eventTypes)
                 eType = eventTypes{k};
                 if isDenestable(timeTb.(eType))
@@ -381,6 +412,7 @@ classdef Satellites
                     b = false;
                 end
             end
+            
             
             % Return results
             result.txtLines = txt;
